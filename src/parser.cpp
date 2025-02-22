@@ -18,23 +18,25 @@ std::unique_ptr<Node> Parser::parseExpression() {
 }
 
 std::unique_ptr<Node> Parser::parseTerm() {
-	auto left = parseFactor();
+    auto left = parseFactor();
 
-	while(matchMultipleTokens({Token::Kind::TOKEN_PLUS, Token::Kind::TOKEN_MINUS})) {
-		Token::Kind op = previous().getKind();
-		auto right = parseFactor();
-		left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right));
-	}
+    while(matchMultipleTokens({Token::Kind::TOKEN_STAR, Token::Kind::TOKEN_SLASH})) {
+        Token::Kind op = previous().getKind();
+        auto right = parseFactor();
+        left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right));
+    }
 
-	return left;
+    return left;
 }
 
 std::unique_ptr<Node> Parser::parseFactor() {
 	if (matchSingleToken(Token::Kind::TOKEN_NUMBER)) {
+		advance();
 		return std::make_unique<NodeNumber>(std::stoi(previous().getValue()));
 	}
 
 	if (matchSingleToken(Token::Kind::TOKEN_IDENTIFIER)) {
+		advance();
 		return std::make_unique<NodeIdentifier>(previous().getValue());
 	}
 
@@ -54,10 +56,7 @@ bool Parser::matchMultipleTokens(const std::vector<Token::Kind> &kinds) {
 }
 
 bool Parser::matchSingleToken(const Token::Kind kind) {
-	if (isAtEnd())
-		position++;
-
-	return peek().getKind() == kind;
+    return !isAtEnd() && peek().getKind() == kind;
 }
 
 bool Parser::isAtEnd() const {
