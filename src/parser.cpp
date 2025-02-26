@@ -55,7 +55,7 @@ std::unique_ptr<Node> Parser::parseFactor()
 		return std::make_unique<NodeIdentifier>(previous().getValue());
 	}
 
-	throw std::runtime_error("Unexpected token in factor");
+	fprintf(stderr, "Unexpected token in factor");
 }
 
 std::unique_ptr<Node> Parser::parseStatement()
@@ -79,7 +79,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 	advance();
 	if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
-		throw std::runtime_error("Expected variable name after 'let'");
+		fprintf(stderr, "Expected variable name after 'let'");
 	}
 
 	std::string name = peek().getValue();
@@ -87,7 +87,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_EQUAL))
 	{
-		throw std::runtime_error("Expected '=' after variable name");
+		fprintf(stderr, "Expected '=' after variable name");
 	}
 
 	advance();
@@ -104,7 +104,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 std::unique_ptr<Node> Parser::parseAssignment()
 {
 	auto expr = parseExpression();
-	
+
 	if (matchSingleToken(Token::Kind::TOKEN_EQUAL))
 	{
 		advance();
@@ -116,7 +116,7 @@ std::unique_ptr<Node> Parser::parseAssignment()
 		}
 		else
 		{
-			throw std::runtime_error("Invalid assignment target.");
+			fprintf(stderr, "Invalid assignment target.");
 		}
 	}
 

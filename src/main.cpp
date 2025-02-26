@@ -1,6 +1,7 @@
 #include <iostream>
 #include "../include/lexer.hpp"
 #include "../include/parser.hpp"
+#include "../include/codegen.hpp"
 
 std::string tokenKindToString(Token::Kind kind)
 {
@@ -81,18 +82,16 @@ int main()
                   << static_cast<int>(token.getKind()) << std::endl;
     }
 
-    try
-    {
-        Parser parser(tokens);
-        std::unique_ptr<Node> ast = parser.parse();
+    Parser parser(tokens);
+    std::unique_ptr<Node> ast = parser.parse();
 
-        std::cout << "\nAST Structure:\n";
-        printAST(ast.get());
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
+    std::cout << "\nAST Structure:\n";
+    printAST(ast.get());
+
+    CodeGenerator codegen("main_module");
+    codegen.generate(ast.get());
+
+    codegen.getModule()->print(llvm::outs(), nullptr);
 
     return 0;
 }
