@@ -3,12 +3,14 @@
 #include <memory>
 #include "lexer.hpp"
 
-class Node {
+class Node
+{
 public:
 	virtual ~Node() = default;
 };
 
-class NodeNumber : public Node {
+class NodeNumber : public Node
+{
 public:
 	explicit NodeNumber(int value) : value(value) {}
 
@@ -18,7 +20,8 @@ private:
 	int value;
 };
 
-class NodeIdentifier : public Node {
+class NodeIdentifier : public Node
+{
 public:
 	explicit NodeIdentifier(const std::string &name) : name(name) {}
 
@@ -28,7 +31,8 @@ private:
 	std::string name;
 };
 
-class NodeBinaryOp : public Node {
+class NodeBinaryOp : public Node
+{
 public:
 	NodeBinaryOp(Token::Kind op, std::unique_ptr<Node> left, std::unique_ptr<Node> right) : op(op), left(std::move(left)), right(std::move(right)) {}
 
@@ -42,7 +46,45 @@ private:
 	std::unique_ptr<Node> right;
 };
 
-class Parser {
+class NodeVarDeclaration : public Node
+{
+public:
+	NodeVarDeclaration(const std::string &name, std::unique_ptr<Node> initializer) : name(name), initializer(std::move(initializer)) {}
+
+	const std::string &getName() const { return name; }
+	const Node *getInitializer() const { return initializer.get(); }
+
+private:
+	std::string name;
+	std::unique_ptr<Node> initializer;
+};
+
+class NodeAssignment : public Node
+{
+public:
+	NodeAssignment(const std::string &name, std::unique_ptr<Node> value) : name(name), value(std::move(value)) {}
+
+	const std::string &getName() const { return name; }
+	const Node *getValue() const { return value.get(); }
+
+private:
+	const std::string name;
+	std::unique_ptr<Node> value;
+};
+
+class NodeBlock : public Node
+{
+public:
+	void addStatement(std::unique_ptr<Node> stmt) { statements.push_back(std::move(stmt)); }
+
+	const std::vector<std::unique_ptr<Node>> &getStatements() const { return statements; }
+
+private:
+	std::vector<std::unique_ptr<Node>> statements;
+};
+
+class Parser
+{
 public:
 	explicit Parser(std::vector<Token> &tokens) : tokens(tokens), position(0) {}
 
@@ -52,6 +94,10 @@ private:
 	std::unique_ptr<Node> parseExpression();
 	std::unique_ptr<Node> parseTerm();
 	std::unique_ptr<Node> parseFactor();
+
+	std::unique_ptr<Node> parseStatement();
+	std::unique_ptr<Node> parseVariableDeclaration();
+	std::unique_ptr<Node> parseAssignment();
 
 	bool matchMultipleTokens(const std::vector<Token::Kind> &kinds);
 	bool matchSingleToken(const Token::Kind kind);

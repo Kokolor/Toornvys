@@ -3,15 +3,23 @@
 #include <string>
 #include <vector>
 
-class Token {
+class Token
+{
 public:
-	enum class Kind {
+	enum class Kind
+	{
 		TOKEN_NUMBER,
 		TOKEN_IDENTIFIER,
 		TOKEN_PLUS,
 		TOKEN_MINUS,
 		TOKEN_STAR,
 		TOKEN_SLASH,
+		TOKEN_EQUAL,
+		TOKEN_SEMI,
+
+		TOKEN_LET,
+		TOKEN_FN,
+
 		TOKEN_EOF,
 		TOKEN_INVALID
 	};
@@ -26,7 +34,8 @@ private:
 	std::string value;
 };
 
-class Lexer {
+class Lexer
+{
 public:
 	explicit Lexer(const std::string &source) : source(source), position(0) {}
 
