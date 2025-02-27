@@ -10,13 +10,19 @@ class SymbolTable
 public:
     SymbolTable() { scopes.emplace_back(); }
 
-    void addVariable(const std::string &name, llvm::Value *value);
-    llvm::Value *lookupVariable(const std::string &name) const;
+    struct Symbol
+    {
+        llvm::Value *value;
+        llvm::Type *type;
+    };
+
+    void addVariable(const std::string &name, llvm::Value *value, llvm::Type *type);
+    const Symbol *lookupVariable(const std::string &name) const;
     void enterScope();
     void exitScope();
 
 private:
-    std::vector<std::unordered_map<std::string, llvm::Value *>> scopes;
+    std::vector<std::unordered_map<std::string, Symbol>> scopes;
 };
 
 class CodeGenerator
@@ -28,8 +34,9 @@ public:
     llvm::Module *getModule() const { return module.get(); }
 
 private:
-    llvm::Value *generateExpression(const Node *node);
+    llvm::Value *generateExpression(const Node *node, llvm::Type *expectedType = nullptr);
     llvm::Value *generateVarDeclaration(const NodeVarDeclaration *node, llvm::Function *function);
+    llvm::Value *castValue(llvm::Value *value, llvm::Type *expectedType);
     llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *function, const std::string &varName, llvm::Type *varType);
 
     llvm::LLVMContext context;

@@ -73,7 +73,7 @@ void printAST(const Node *node, int indent = 0)
 
 int main()
 {
-    Lexer lexer("let hello = 4 + 2;\nlet test = hello * 2 + 4;");
+    Lexer lexer("let hello i16 = 4 + 2;\nlet test i32 = hello * 2 + 4;");
     std::vector<Token> tokens = lexer.tokenize();
 
     for (const Token &token : tokens)

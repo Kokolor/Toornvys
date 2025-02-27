@@ -49,13 +49,15 @@ private:
 class NodeVarDeclaration : public Node
 {
 public:
-	NodeVarDeclaration(const std::string &name, std::unique_ptr<Node> initializer) : name(name), initializer(std::move(initializer)) {}
+	NodeVarDeclaration(const std::string &name, std::string &type, std::unique_ptr<Node> initializer) : name(name), type(type), initializer(std::move(initializer)) {}
 
 	const std::string &getName() const { return name; }
+	const std::string &getType() const { return type; }
 	const Node *getInitializer() const { return initializer.get(); }
 
 private:
 	std::string name;
+	std::string type;
 	std::unique_ptr<Node> initializer;
 };
 

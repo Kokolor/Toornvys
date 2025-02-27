@@ -20,6 +20,8 @@ public:
 		TOKEN_LET,
 		TOKEN_FN,
 
+		TOKEN_INT_TYPE,
+
 		TOKEN_EOF,
 		TOKEN_INVALID
 	};

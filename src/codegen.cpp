@@ -1,22 +1,20 @@
 #include "../include/codegen.hpp"
 
-void SymbolTable::addVariable(const std::string &name, llvm::Value *value)
+void SymbolTable::addVariable(const std::string &name, llvm::Value *value, llvm::Type *type)
 {
-    scopes.back()[name] = value;
+    scopes.back()[name] = {value, type};
 }
 
-llvm::Value *SymbolTable::lookupVariable(const std::string &name) const
+const SymbolTable::Symbol *SymbolTable::lookupVariable(const std::string &name) const
 {
     for (auto scopeIt = scopes.rbegin(); scopeIt != scopes.rend(); scopeIt++)
     {
         auto it = scopeIt->find(name);
-
         if (it != scopeIt->end())
         {
-            return it->second;
+            return &it->second;
         }
     }
-
     return nullptr;
 }
 
@@ -55,18 +53,29 @@ void CodeGenerator::generate(const Node *root)
     builder.CreateRet(llvm::ConstantInt::get(context, llvm::APInt(32, 0)));
 }
 
-llvm::Value *CodeGenerator::generateExpression(const Node *node)
+llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *expectedType)
 {
     if (auto number = dynamic_cast<const NodeNumber *>(node))
     {
-        return llvm::ConstantInt::get(context, llvm::APInt(32, number->getValue(), true));
+        if (!expectedType)
+        {
+            fprintf(stderr, "Expected type\n");
+            return nullptr;
+        }
+
+        unsigned bitWidth = expectedType->getIntegerBitWidth();
+        return llvm::ConstantInt::get(context, llvm::APInt(bitWidth, number->getValue(), true));
     }
     else if (auto binary = dynamic_cast<const NodeBinaryOp *>(node))
     {
-        llvm::Value *left = generateExpression(binary->getLeft());
-        llvm::Value *right = generateExpression(binary->getRight());
+        llvm::Value *left = generateExpression(binary->getLeft(), expectedType);
+        llvm::Value *right = generateExpression(binary->getRight(), expectedType);
+
         if (!left || !right)
             return nullptr;
+
+        left = castValue(left, expectedType);
+        right = castValue(right, expectedType);
 
         switch (binary->getOp())
         {
@@ -84,12 +93,20 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node)
     }
     else if (auto identifier = dynamic_cast<const NodeIdentifier *>(node))
     {
-        llvm::Value *varPtr = symbolTable.lookupVariable(identifier->getName());
+        const SymbolTable::Symbol *symbol = symbolTable.lookupVariable(identifier->getName());
 
-        if (!varPtr)
-            fprintf(stderr, "Undefined variable: %s", identifier->getName());
+        if (!symbol)
+        {
+            fprintf(stderr, "Undefined variable: %s\n", identifier->getName().c_str());
+            return nullptr;
+        }
 
-        return builder.CreateLoad(llvm::Type::getInt32Ty(context), varPtr, identifier->getName().c_str());
+        llvm::Value *value = builder.CreateLoad(symbol->type, symbol->value, identifier->getName().c_str());
+
+        if (expectedType)
+            value = castValue(value, expectedType);
+
+        return value;
     }
 
     return nullptr;
@@ -97,17 +114,58 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node)
 
 llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *node, llvm::Function *function)
 {
-    llvm::Type *llvmType = llvm::Type::getInt32Ty(context);
+    llvm::Type *llvmType;
+
+    if (node->getType() == "i8")
+    {
+        llvmType = llvm::Type::getInt8Ty(context);
+    }
+    else if (node->getType() == "i16")
+    {
+        llvmType = llvm::Type::getInt16Ty(context);
+    }
+    else if (node->getType() == "i32")
+    {
+        llvmType = llvm::Type::getInt32Ty(context);
+    }
+    else if (node->getType() == "i64")
+    {
+        llvmType = llvm::Type::getInt64Ty(context);
+    }
+    else
+    {
+        fprintf(stderr, "Unknown type: %s", node->getType());
+    }
+
     llvm::AllocaInst *alloca = createEntryBlockAlloca(function, node->getName(), llvmType);
 
-    symbolTable.addVariable(node->getName(), alloca);
+    symbolTable.addVariable(node->getName(), alloca, llvmType);
 
-    llvm::Value *initializer = generateExpression(node->getInitializer());
+    llvm::Value *initializer = generateExpression(node->getInitializer(), llvmType);
 
     if (!initializer)
         return nullptr;
 
     return builder.CreateStore(initializer, alloca);
+}
+
+llvm::Value *CodeGenerator::castValue(llvm::Value *value, llvm::Type *expectedType)
+{
+    if (value->getType() == expectedType)
+        return value;
+
+    if (value->getType()->isIntegerTy() && expectedType->isIntegerTy())
+    {
+        unsigned srcBits = value->getType()->getIntegerBitWidth();
+        unsigned dstBits = expectedType->getIntegerBitWidth();
+
+        if (srcBits < dstBits)
+            return builder.CreateSExt(value, expectedType, "sext");
+        else if (srcBits > dstBits)
+            return builder.CreateTrunc(value, expectedType, "trunc");
+    }
+
+    return value;
 }
 
 llvm::AllocaInst *CodeGenerator::createEntryBlockAlloca(llvm::Function *function, const std::string &varName, llvm::Type *varType)

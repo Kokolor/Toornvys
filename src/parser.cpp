@@ -85,6 +85,14 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 	std::string name = peek().getValue();
 	advance();
 
+	if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
+	{
+		fprintf(stderr, "Expected type after variable name");
+	}
+
+	std::string type = peek().getValue();
+	advance();
+
 	if (!matchSingleToken(Token::Kind::TOKEN_EQUAL))
 	{
 		fprintf(stderr, "Expected '=' after variable name");
@@ -98,7 +106,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 		advance();
 	}
 
-	return std::make_unique<NodeVarDeclaration>(name, std::move(initializer));
+	return std::make_unique<NodeVarDeclaration>(name, type, std::move(initializer));
 }
 
 std::unique_ptr<Node> Parser::parseAssignment()
@@ -109,7 +117,7 @@ std::unique_ptr<Node> Parser::parseAssignment()
 	{
 		advance();
 		auto value = parseAssignment();
-		
+
 		if (auto ident = dynamic_cast<NodeIdentifier *>(expr.get()))
 		{
 			return std::make_unique<NodeAssignment>(ident->getName(), std::move(value));
