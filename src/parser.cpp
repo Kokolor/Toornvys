@@ -246,7 +246,17 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	std::string returnType = "void";
 
-	if (matchSingleToken(Token::Kind::TOKEN_COLON))
+	if (!matchSingleToken(Token::Kind::TOKEN_FAT_ARROW))
+	{
+		fprintf(stderr, "Expected '=>' before body\n");
+		exit(EXIT_FAILURE);
+	}
+
+	advance();
+
+	auto body = parseBlock();
+
+	if (matchSingleToken(Token::Kind::TOKEN_ARROW))
 	{
 		advance();
 
@@ -260,8 +270,6 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 		returnType = previous().getValue();
 	}
-
-	auto body = parseBlock();
 
 	return std::make_unique<NodeFuncDeclaration>(name, args, std::move(body), returnType);
 }

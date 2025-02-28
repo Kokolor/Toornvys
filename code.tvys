@@ -1,0 +1,6 @@
+let hello: i16 = 14;
+
+fn main() => {
+    let skibidi: i32 = hello + 4;
+    return skibidi * 2;
+} -> i32

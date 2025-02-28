@@ -45,7 +45,16 @@ Token Lexer::getNextToken()
 		return Token(Token::Kind::TOKEN_PLUS, "+");
 	case '-':
 		position++;
-		return Token(Token::Kind::TOKEN_MINUS, "-");
+		
+		if (position < source.size() && source[position] == '>')
+		{
+			position++;
+			return Token(Token::Kind::TOKEN_ARROW, "->");
+		}
+		else
+		{
+			return Token(Token::Kind::TOKEN_MINUS, "-");
+		}
 	case '*':
 		position++;
 		return Token(Token::Kind::TOKEN_STAR, "*");
@@ -63,7 +72,16 @@ Token Lexer::getNextToken()
 		return Token(Token::Kind::TOKEN_SEMI, ";");
 	case '=':
 		position++;
-		return Token(Token::Kind::TOKEN_EQUAL, "=");
+
+		if (position < source.size() && source[position] == '>')
+		{
+			position++;
+			return Token(Token::Kind::TOKEN_FAT_ARROW, "=>");
+		}
+		else
+		{
+			return Token(Token::Kind::TOKEN_EQUAL, "=");
+		}
 	case '(':
 		position++;
 		return Token(Token::Kind::TOKEN_LPAREN, "(");

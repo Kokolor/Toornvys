@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include "../include/lexer.hpp"
 #include "../include/parser.hpp"
 #include "../include/codegen.hpp"
@@ -76,9 +78,31 @@ void printAST(const Node *node, int indent = 0)
     }
 }
 
-int main()
+std::string readSourceFile(const std::string &filename)
 {
-    Lexer lexer("let skibidi: i8 = 7;\nfn meow(args: i32, test: i16): i32 { \nlet hello: i16 = 4 + 2; let crampte: i32 = 17;return hello;\n}");
+    std::ifstream file(filename);
+    if (!file.is_open())
+    {
+        std::cerr << "Neuil while opening the file '" << filename << "'" << std::endl;
+        exit(1);
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+int main(int argc, char *argv[])
+{
+    if (argc < 2)
+    {
+        std::cerr << "Usage: " << argv[0] << " <file>" << std::endl;
+        return 1;
+    }
+
+    std::string sourceCode = readSourceFile(argv[1]);
+
+    Lexer lexer(sourceCode);
     std::vector<Token> tokens = lexer.tokenize();
 
     for (const Token &token : tokens)
@@ -95,7 +119,6 @@ int main()
 
     CodeGenerator codegen("main_module");
     codegen.generate(ast.get());
-
     codegen.getModule()->print(llvm::outs(), nullptr);
 
     return 0;
