@@ -78,7 +78,7 @@ void printAST(const Node *node, int indent = 0)
 
 int main()
 {
-    Lexer lexer("fn meow(args: i32, test: i16): i32 { \nlet hello: i16 = 4 + 2;\n \n}");
+    Lexer lexer("let skibidi: i8 = 7;\nfn meow(args: i32, test: i16): i32 { \nlet hello: i16 = 4 + 2;\n \n}");
     std::vector<Token> tokens = lexer.tokenize();
 
     for (const Token &token : tokens)
@@ -93,10 +93,10 @@ int main()
     std::cout << "\nAST Structure:\n";
     printAST(ast.get());
 
-    // CodeGenerator codegen("main_module");
-    // codegen.generate(ast.get());
+    CodeGenerator codegen("main_module");
+    codegen.generate(ast.get());
 
-    // codegen.getModule()->print(llvm::outs(), nullptr);
+    codegen.getModule()->print(llvm::outs(), nullptr);
 
     return 0;
 }

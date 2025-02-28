@@ -31,26 +31,71 @@ void SymbolTable::exitScope()
         fprintf(stderr, "Attempt to exit the global scope is not allowed");
 }
 
+llvm::Type *CodeGenerator::getLLVMType(const std::string &typeName)
+{
+    if (typeName == "i8")
+    {
+        return llvm::Type::getInt8Ty(context);
+    }
+    else if (typeName == "i16")
+    {
+        return llvm::Type::getInt16Ty(context);
+    }
+    else if (typeName == "i32")
+    {
+        return llvm::Type::getInt32Ty(context);
+    }
+    else if (typeName == "i64")
+    {
+        return llvm::Type::getInt64Ty(context);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 void CodeGenerator::generate(const Node *root)
 {
-    llvm::FunctionType *funcType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), false);
-    llvm::Function *mainFunc = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", module.get());
-    llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", mainFunc);
-
-    builder.SetInsertPoint(entry);
-
     if (const NodeBlock *block = dynamic_cast<const NodeBlock *>(root))
     {
         for (const auto &stmt : block->getStatements())
         {
             if (auto varDecl = dynamic_cast<const NodeVarDeclaration *>(stmt.get()))
             {
-                generateVarDeclaration(varDecl, mainFunc);
+                llvm::Type *llvmType = getLLVMType(varDecl->getType());
+                if (!llvmType)
+                {
+                    fprintf(stderr, "Unknown type: %s\n", varDecl->getType().c_str());
+                    continue;
+                }
+
+                llvm::GlobalVariable *globalVar = new llvm::GlobalVariable(
+                    *module,
+                    llvmType,
+                    false,
+                    llvm::GlobalValue::ExternalLinkage,
+                    nullptr,
+                    varDecl->getName());
+
+                symbolTable.addVariable(varDecl->getName(), globalVar, llvmType);
+
+                if (varDecl->getInitializer())
+                {
+                    llvm::Value *initializer = generateExpression(varDecl->getInitializer(), llvmType);
+
+                    if (initializer)
+                    {
+                        globalVar->setInitializer(llvm::cast<llvm::Constant>(initializer));
+                    }
+                }
+            }
+            else if (auto funcDecl = dynamic_cast<const NodeFuncDeclaration *>(stmt.get()))
+            {
+                generateFuncDeclaration(funcDecl);
             }
         }
     }
-
-    builder.CreateRet(llvm::ConstantInt::get(context, llvm::APInt(32, 0)));
 }
 
 llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *expectedType)
@@ -114,27 +159,12 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
 
 llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *node, llvm::Function *function)
 {
-    llvm::Type *llvmType;
-
-    if (node->getType() == "i8")
+    llvm::Type *llvmType = getLLVMType(node->getType());
+    
+    if (!llvmType)
     {
-        llvmType = llvm::Type::getInt8Ty(context);
-    }
-    else if (node->getType() == "i16")
-    {
-        llvmType = llvm::Type::getInt16Ty(context);
-    }
-    else if (node->getType() == "i32")
-    {
-        llvmType = llvm::Type::getInt32Ty(context);
-    }
-    else if (node->getType() == "i64")
-    {
-        llvmType = llvm::Type::getInt64Ty(context);
-    }
-    else
-    {
-        fprintf(stderr, "Unknown type: %s", node->getType());
+        fprintf(stderr, "Unknown type: %s\n", node->getType().c_str());
+        return nullptr;
     }
 
     llvm::AllocaInst *alloca = createEntryBlockAlloca(function, node->getName(), llvmType);
@@ -147,6 +177,67 @@ llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *nod
         return nullptr;
 
     return builder.CreateStore(initializer, alloca);
+}
+
+void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
+{
+    std::vector<llvm::Type *> argTypes;
+
+    for (const auto &arg : node->getArgs())
+    {
+        llvm::Type *argType = getLLVMType(arg.second);
+
+        if (!argType)
+        {
+            fprintf(stderr, "Unknown argument type: %s\n", arg.second.c_str());
+            return;
+        }
+
+        argTypes.push_back(argType);
+    }
+
+    llvm::Type *returnType = getLLVMType(node->getReturnType());
+
+    if (!returnType)
+    {
+        fprintf(stderr, "Unknown return type: %s\n", node->getReturnType().c_str());
+        return;
+    }
+
+    llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, argTypes, false);
+    llvm::Function *function = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node->getName(), module.get());
+    llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", function);
+
+    builder.SetInsertPoint(entry);
+    symbolTable.enterScope();
+
+    unsigned idx = 0;
+
+    for (auto &arg : function->args())
+    {
+        std::string argName = node->getArgs()[idx].first;
+        arg.setName(argName);
+
+        llvm::AllocaInst *alloca = createEntryBlockAlloca(function, argName, arg.getType());
+        builder.CreateStore(&arg, alloca);
+
+        symbolTable.addVariable(argName, alloca, arg.getType());
+        idx++;
+    }
+
+    if (const NodeBlock *body = dynamic_cast<const NodeBlock *>(node->getBody().get()))
+    {
+        for (const auto &stmt : body->getStatements())
+        {
+            if (auto varDecl = dynamic_cast<const NodeVarDeclaration *>(stmt.get()))
+            {
+                generateVarDeclaration(varDecl, function);
+            }
+        }
+    }
+
+    builder.CreateRet(llvm::ConstantInt::get(returnType, 0));
+    symbolTable.exitScope();
 }
 
 llvm::Value *CodeGenerator::castValue(llvm::Value *value, llvm::Type *expectedType)

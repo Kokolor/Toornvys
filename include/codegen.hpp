@@ -34,8 +34,11 @@ public:
     llvm::Module *getModule() const { return module.get(); }
 
 private:
+    llvm::Type *getLLVMType(const std::string &typeName);
+
     llvm::Value *generateExpression(const Node *node, llvm::Type *expectedType = nullptr);
     llvm::Value *generateVarDeclaration(const NodeVarDeclaration *node, llvm::Function *function);
+    void generateFuncDeclaration(const NodeFuncDeclaration *node);
     llvm::Value *castValue(llvm::Value *value, llvm::Type *expectedType);
     llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *function, const std::string &varName, llvm::Type *varType);
 
