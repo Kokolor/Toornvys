@@ -136,6 +136,36 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
             return builder.CreateMul(left, right, "multmp");
         case Token::Kind::TOKEN_SLASH:
             return builder.CreateSDiv(left, right, "divtmp");
+        case Token::Kind::TOKEN_EQUAL_EQUAL:
+        {
+            llvm::Value *cmp = builder.CreateICmpEQ(left, right, "eqtmp");
+            return builder.CreateZExt(cmp, expectedType, "zexttmp");
+        }
+        case Token::Kind::TOKEN_BANG_EQUAL:
+        {
+            llvm::Value *cmp = builder.CreateICmpNE(left, right, "netmp");
+            return builder.CreateZExt(cmp, expectedType, "zexttmp");
+        }
+        case Token::Kind::TOKEN_LESS:
+        {
+            llvm::Value *cmp = builder.CreateICmpSLT(left, right, "slttmp");
+            return builder.CreateZExt(cmp, expectedType, "zexttmp");
+        }
+        case Token::Kind::TOKEN_LESS_EQUAL:
+        {
+            llvm::Value *cmp = builder.CreateICmpSLE(left, right, "sletmp");
+            return builder.CreateZExt(cmp, expectedType, "zexttmp");
+        }
+        case Token::Kind::TOKEN_GREATER:
+        {
+            llvm::Value *cmp = builder.CreateICmpSGT(left, right, "sgttmp");
+            return builder.CreateZExt(cmp, expectedType, "zexttmp");
+        }
+        case Token::Kind::TOKEN_GREATER_EQUAL:
+        {
+            llvm::Value *cmp = builder.CreateICmpSGE(left, right, "sgetmp");
+            return builder.CreateZExt(cmp, expectedType, "zexttmp");
+        }
         default:
             return nullptr;
         }

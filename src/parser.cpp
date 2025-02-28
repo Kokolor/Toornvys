@@ -15,6 +15,30 @@ std::unique_ptr<Node> Parser::parse()
 
 std::unique_ptr<Node> Parser::parseExpression()
 {
+	return parseComparison();
+}
+
+std::unique_ptr<Node> Parser::parseComparison()
+{
+	auto left = parseAdditive();
+
+	while (matchMultipleTokens({Token::Kind::TOKEN_EQUAL_EQUAL,
+								Token::Kind::TOKEN_BANG_EQUAL,
+								Token::Kind::TOKEN_LESS_EQUAL,
+								Token::Kind::TOKEN_GREATER_EQUAL,
+								Token::Kind::TOKEN_LESS,
+								Token::Kind::TOKEN_GREATER}))
+	{
+		Token::Kind op = previous().getKind();
+		auto right = parseAdditive();
+		left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right));
+	}
+
+	return left;
+}
+
+std::unique_ptr<Node> Parser::parseAdditive()
+{
 	auto left = parseTerm();
 
 	while (matchMultipleTokens({Token::Kind::TOKEN_PLUS, Token::Kind::TOKEN_MINUS}))
@@ -26,7 +50,6 @@ std::unique_ptr<Node> Parser::parseExpression()
 
 	return left;
 }
-
 std::unique_ptr<Node> Parser::parseTerm()
 {
 	auto left = parseFactor();
@@ -53,6 +76,23 @@ std::unique_ptr<Node> Parser::parseFactor()
 	{
 		advance();
 		return std::make_unique<NodeIdentifier>(previous().getValue());
+	}
+
+	if (matchSingleToken(Token::Kind::TOKEN_LPAREN))
+	{
+		advance();
+
+		auto expr = parseExpression();
+
+		if (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
+		{
+			fprintf(stderr, "Expected ')' after expression\n");
+			exit(EXIT_FAILURE);
+		}
+
+		advance();
+
+		return expr;
 	}
 
 	fprintf(stderr, "Unexpected token in factor: '%s'\n", peek().getValue().c_str());

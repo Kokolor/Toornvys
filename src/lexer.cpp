@@ -45,7 +45,7 @@ Token Lexer::getNextToken()
 		return Token(Token::Kind::TOKEN_PLUS, "+");
 	case '-':
 		position++;
-		
+
 		if (position < source.size() && source[position] == '>')
 		{
 			position++;
@@ -73,14 +73,58 @@ Token Lexer::getNextToken()
 	case '=':
 		position++;
 
-		if (position < source.size() && source[position] == '>')
+		if (position < source.size())
+		{
+			if (source[position] == '=')
+			{
+				position++;
+				return Token(Token::Kind::TOKEN_EQUAL_EQUAL, "==");
+			}
+			else if (source[position] == '>')
+			{
+				position++;
+				return Token(Token::Kind::TOKEN_FAT_ARROW, "=>");
+			}
+		}
+		return Token(Token::Kind::TOKEN_EQUAL, "=");
+
+	case '<':
+		position++;
+
+		if (position < source.size() && source[position] == '=')
 		{
 			position++;
-			return Token(Token::Kind::TOKEN_FAT_ARROW, "=>");
+			return Token(Token::Kind::TOKEN_LESS_EQUAL, "<=");
 		}
 		else
 		{
-			return Token(Token::Kind::TOKEN_EQUAL, "=");
+			return Token(Token::Kind::TOKEN_LESS, "<");
+		}
+
+	case '>':
+		position++;
+
+		if (position < source.size() && source[position] == '=')
+		{
+			position++;
+			return Token(Token::Kind::TOKEN_GREATER_EQUAL, ">=");
+		}
+		else
+		{
+			return Token(Token::Kind::TOKEN_GREATER, ">");
+		}
+
+	case '!':
+		position++;
+
+		if (position < source.size() && source[position] == '=')
+		{
+			position++;
+			return Token(Token::Kind::TOKEN_BANG_EQUAL, "!=");
+		}
+		else
+		{
+			return Token(Token::Kind::TOKEN_INVALID, "!");
 		}
 	case '(':
 		position++;
@@ -158,5 +202,5 @@ bool Lexer::isDigit(char character) const
 
 bool Lexer::isAlpha(char character) const
 {
-	return std::isalpha(character);
+	return std::isalpha(character) || character == '_';
 }

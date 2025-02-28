@@ -1,6 +1,6 @@
-let hello: i16 = 14;
+fn compare_values() => {
+    let a: i32 = 10;
+    let b: i32 = 20;
 
-fn main() => {
-    let skibidi: i32 = hello + 4;
-    return skibidi * 2;
+    return (a == b) + (a != b) * 10 + (a < b) * 100 + (a <= b) * 1000 + (a > b) * 10000 + (a >= b) * 100000;
 } -> i32

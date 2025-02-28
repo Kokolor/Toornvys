@@ -122,6 +122,8 @@ public:
 
 private:
 	std::unique_ptr<Node> parseExpression();
+	std::unique_ptr<Node> parseComparison();
+	std::unique_ptr<Node> parseAdditive();
 	std::unique_ptr<Node> parseTerm();
 	std::unique_ptr<Node> parseFactor();
 
