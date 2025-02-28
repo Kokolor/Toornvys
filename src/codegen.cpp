@@ -49,6 +49,10 @@ llvm::Type *CodeGenerator::getLLVMType(const std::string &typeName)
     {
         return llvm::Type::getInt64Ty(context);
     }
+    else if (typeName == "void")
+    {
+        return llvm::Type::getVoidTy(context);
+    }
     else
     {
         return nullptr;
@@ -157,10 +161,37 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
     return nullptr;
 }
 
+void CodeGenerator::generateReturn(const NodeReturn *node, llvm::Type *expectedType)
+{
+    if (node->getExpression())
+    {
+        llvm::Value *returnValue = generateExpression(node->getExpression(), expectedType);
+
+        if (!returnValue)
+        {
+            fprintf(stderr, "Error: Invalid return expression.\n");
+            return;
+        }
+
+        builder.CreateRet(returnValue);
+    }
+    else
+    {
+        if (expectedType->isVoidTy())
+        {
+            builder.CreateRetVoid();
+        }
+        else
+        {
+            fprintf(stderr, "Non-void function must return a value.\n");
+        }
+    }
+}
+
 llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *node, llvm::Function *function)
 {
     llvm::Type *llvmType = getLLVMType(node->getType());
-    
+
     if (!llvmType)
     {
         fprintf(stderr, "Unknown type: %s\n", node->getType().c_str());
@@ -225,6 +256,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
         idx++;
     }
 
+    bool hasReturn = false;
     if (const NodeBlock *body = dynamic_cast<const NodeBlock *>(node->getBody().get()))
     {
         for (const auto &stmt : body->getStatements())
@@ -233,10 +265,28 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
             {
                 generateVarDeclaration(varDecl, function);
             }
+            else if (auto returnStmt = dynamic_cast<const NodeReturn *>(stmt.get()))
+            {
+                generateReturn(returnStmt, returnType);
+                hasReturn = true;
+            }
         }
     }
 
-    builder.CreateRet(llvm::ConstantInt::get(returnType, 0));
+    if (!hasReturn)
+    {
+        if (returnType->isVoidTy())
+        {
+            builder.CreateRetVoid();
+        }
+        else
+        {
+            fprintf(stderr, "Function '%s' with return type '%s' must have a return statement.\n", node->getName().c_str(), node->getReturnType().c_str());
+
+            return;
+        }
+    }
+
     symbolTable.exitScope();
 }
 

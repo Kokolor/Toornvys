@@ -37,6 +37,7 @@ private:
     llvm::Type *getLLVMType(const std::string &typeName);
 
     llvm::Value *generateExpression(const Node *node, llvm::Type *expectedType = nullptr);
+    void generateReturn(const NodeReturn *node, llvm::Type *expectedType);
     llvm::Value *generateVarDeclaration(const NodeVarDeclaration *node, llvm::Function *function);
     void generateFuncDeclaration(const NodeFuncDeclaration *node);
     llvm::Value *castValue(llvm::Value *value, llvm::Type *expectedType);

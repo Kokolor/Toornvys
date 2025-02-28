@@ -69,6 +69,10 @@ std::unique_ptr<Node> Parser::parseStatement()
 	{
 		return parseFuncDeclaration();
 	}
+	else if (matchSingleToken(Token::Kind::TOKEN_RETURN))
+	{
+		return parseReturn();
+	}
 
 	auto expr = parseAssignment();
 
@@ -104,6 +108,26 @@ std::unique_ptr<NodeBlock> Parser::parseBlock()
 	advance();
 
 	return block;
+}
+
+std::unique_ptr<Node> Parser::parseReturn()
+{
+	advance();
+
+	if (matchSingleToken(Token::Kind::TOKEN_SEMI))
+	{
+		advance();
+		return std::make_unique<NodeReturn>(nullptr);
+	}
+
+	auto expr = parseExpression();
+
+	if (matchSingleToken(Token::Kind::TOKEN_SEMI))
+	{
+		advance();
+	}
+
+	return std::make_unique<NodeReturn>(std::move(expr));
 }
 
 std::unique_ptr<Node> Parser::parseVariableDeclaration()

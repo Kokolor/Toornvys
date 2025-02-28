@@ -101,6 +101,10 @@ Token Lexer::getIdentifier()
 	{
 		return Token(Token::Kind::TOKEN_FN, identifier);
 	}
+	else if (identifier == "return")
+	{
+		return Token(Token::Kind::TOKEN_RETURN, identifier);
+	}
 	else if (identifier == "i8" || identifier == "i16" || identifier == "i32" || identifier == "i64")
 	{
 		return Token(Token::Kind::TOKEN_INT_TYPE, identifier);

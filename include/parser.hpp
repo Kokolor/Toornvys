@@ -46,6 +46,17 @@ private:
 	std::unique_ptr<Node> right;
 };
 
+class NodeReturn : public Node
+{
+public:
+	explicit NodeReturn(std::unique_ptr<Node> expression) : expression(std::move(expression)) {}
+
+	const Node *getExpression() const { return expression.get(); }
+
+private:
+	std::unique_ptr<Node> expression;
+};
+
 class NodeVarDeclaration : public Node
 {
 public:
@@ -116,6 +127,7 @@ private:
 
 	std::unique_ptr<Node> parseStatement();
 	std::unique_ptr<NodeBlock> parseBlock();
+	std::unique_ptr<Node> parseReturn();
 	std::unique_ptr<Node> parseVariableDeclaration();
 	std::unique_ptr<Node> parseFuncDeclaration();
 	std::unique_ptr<Node> parseAssignment();
