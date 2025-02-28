@@ -52,12 +52,30 @@ Token Lexer::getNextToken()
 	case '/':
 		position++;
 		return Token(Token::Kind::TOKEN_SLASH, "/");
+	case ',':
+		position++;
+		return Token(Token::Kind::TOKEN_COMMA, ",");
+	case ':':
+		position++;
+		return Token(Token::Kind::TOKEN_COLON, ":");
 	case ';':
 		position++;
 		return Token(Token::Kind::TOKEN_SEMI, ";");
 	case '=':
 		position++;
 		return Token(Token::Kind::TOKEN_EQUAL, "=");
+	case '(':
+		position++;
+		return Token(Token::Kind::TOKEN_LPAREN, "(");
+	case ')':
+		position++;
+		return Token(Token::Kind::TOKEN_RPAREN, ")");
+	case '{':
+		position++;
+		return Token(Token::Kind::TOKEN_LBRACE, "{");
+	case '}':
+		position++;
+		return Token(Token::Kind::TOKEN_RBRACE, "}");
 	default:
 		position++;
 		return Token(Token::Kind::TOKEN_INVALID, std::string(1, character));

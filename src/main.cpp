@@ -15,14 +15,6 @@ std::string tokenKindToString(Token::Kind kind)
         return "*";
     case Token::Kind::TOKEN_SLASH:
         return "/";
-    case Token::Kind::TOKEN_EQUAL:
-        return "=";
-    case Token::Kind::TOKEN_SEMI:
-        return ";";
-    case Token::Kind::TOKEN_LET:
-        return "let";
-    case Token::Kind::TOKEN_FN:
-        return "fn";
     default:
         return "?";
     }
@@ -49,7 +41,7 @@ void printAST(const Node *node, int indent = 0)
     }
     else if (const NodeVarDeclaration *varDecl = dynamic_cast<const NodeVarDeclaration *>(node))
     {
-        std::cout << indentation << "VarDeclaration(" << varDecl->getName() << ")\n";
+        std::cout << indentation << "VarDeclaration(" << varDecl->getName() << ": " << varDecl->getType() << ")\n";
         printAST(varDecl->getInitializer(), indent + 2);
     }
     else if (const NodeAssignment *assign = dynamic_cast<const NodeAssignment *>(node))
@@ -65,6 +57,19 @@ void printAST(const Node *node, int indent = 0)
             printAST(stmt.get(), indent + 2);
         }
     }
+    else if (const NodeFuncDeclaration *funcDecl = dynamic_cast<const NodeFuncDeclaration *>(node))
+    {
+        std::cout << indentation << "FuncDeclaration(" << funcDecl->getName() << ")\n";
+        std::cout << indentation << "  ReturnType: " << funcDecl->getReturnType() << "\n";
+
+        std::cout << indentation << "  Args:\n";
+        for (const auto &arg : funcDecl->getArgs())
+        {
+            std::cout << indentation << "    " << arg.first << ": " << arg.second << "\n";
+        }
+
+        printAST(funcDecl->getBody().get(), indent + 2);
+    }
     else
     {
         std::cout << indentation << "Unknown Node\n";
@@ -73,7 +78,7 @@ void printAST(const Node *node, int indent = 0)
 
 int main()
 {
-    Lexer lexer("let hello i16 = 4 + 2;\nlet test i32 = hello * 2 + 4;");
+    Lexer lexer("fn meow(args: i32, test: i16): i32 { \nlet hello: i16 = 4 + 2;\n \n}");
     std::vector<Token> tokens = lexer.tokenize();
 
     for (const Token &token : tokens)
@@ -88,10 +93,10 @@ int main()
     std::cout << "\nAST Structure:\n";
     printAST(ast.get());
 
-    CodeGenerator codegen("main_module");
-    codegen.generate(ast.get());
+    // CodeGenerator codegen("main_module");
+    // codegen.generate(ast.get());
 
-    codegen.getModule()->print(llvm::outs(), nullptr);
+    // codegen.getModule()->print(llvm::outs(), nullptr);
 
     return 0;
 }

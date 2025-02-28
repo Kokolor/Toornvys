@@ -61,6 +61,23 @@ private:
 	std::unique_ptr<Node> initializer;
 };
 
+class NodeFuncDeclaration : public Node
+{
+public:
+	NodeFuncDeclaration(const std::string &name, const std::vector<std::pair<std::string, std::string>> &args, std::unique_ptr<Node> body, const std::string &returnType) : name(name), args(args), body(std::move(body)), returnType(returnType) {}
+
+	const std::string &getName() const { return name; }
+	const std::vector<std::pair<std::string, std::string>> &getArgs() const { return args; }
+	const std::unique_ptr<Node> &getBody() const { return body; }
+	const std::string &getReturnType() const { return returnType; }
+
+private:
+	std::string name;
+	std::vector<std::pair<std::string, std::string>> args;
+	std::unique_ptr<Node> body;
+	std::string returnType;
+};
+
 class NodeAssignment : public Node
 {
 public:
@@ -98,7 +115,9 @@ private:
 	std::unique_ptr<Node> parseFactor();
 
 	std::unique_ptr<Node> parseStatement();
+	std::unique_ptr<NodeBlock> parseBlock();
 	std::unique_ptr<Node> parseVariableDeclaration();
+	std::unique_ptr<Node> parseFuncDeclaration();
 	std::unique_ptr<Node> parseAssignment();
 
 	bool matchMultipleTokens(const std::vector<Token::Kind> &kinds);

@@ -1,18 +1,21 @@
 import io;
+import mem;
 
-struct User => {
+struct User {
     id: i32,
     name: str,
 }
 
 fn create_user(id: i32, name: str) => {
-    return User { id: id, name: name };
-} -> User
+    return mem.alloc<User>(User { id: id, name: name });
+} -> User*;
 
-fn main() => {
+fn main() =>  {
     let meow: i32 = 14;
-    let user: User = create_user(1, "Alice");
-    io.println("User {}: {}", user.id, user.name);
+    let user: User* = create_user(1, "Alice");
+
+    io.println("User {}: {}", user->id, user->name);
+    mem.free(user);
 
     return 0;
-} -> i32
+} -> i32;
