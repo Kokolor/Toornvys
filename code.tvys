@@ -1,6 +1,6 @@
-fn compare_values() => {
-    let a: i32 = 10;
-    let b: i32 = 20;
+let a: i32 = 42;
+let p: i32* = &a;
 
-    return (a == b) + (a != b) * 10 + (a < b) * 100 + (a <= b) * 1000 + (a > b) * 10000 + (a >= b) * 100000;
+fn deref_test() => {
+    return *p;
 } -> i32

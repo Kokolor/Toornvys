@@ -33,6 +33,20 @@ void SymbolTable::exitScope()
 
 llvm::Type *CodeGenerator::getLLVMType(const std::string &typeName)
 {
+    if (!typeName.empty() && typeName.back() == '*')
+    {
+        std::string baseTypeName = typeName.substr(0, typeName.size() - 1);
+        llvm::Type *baseType = getLLVMType(baseTypeName);
+
+        if (!baseType)
+        {
+            fprintf(stderr, "Unknown base type: %s\n", baseTypeName.c_str());
+            return nullptr;
+        }
+        
+        return llvm::PointerType::getUnqual(baseType);
+    }
+
     if (typeName == "i8")
     {
         return llvm::Type::getInt8Ty(context);
@@ -68,16 +82,19 @@ void CodeGenerator::generate(const Node *root)
             if (auto varDecl = dynamic_cast<const NodeVarDeclaration *>(stmt.get()))
             {
                 llvm::Type *llvmType = getLLVMType(varDecl->getType());
+
                 if (!llvmType)
                 {
                     fprintf(stderr, "Unknown type: %s\n", varDecl->getType().c_str());
                     continue;
                 }
 
+                bool isConstant = (varDecl->getInitializer() != nullptr);
+
                 llvm::GlobalVariable *globalVar = new llvm::GlobalVariable(
                     *module,
                     llvmType,
-                    false,
+                    isConstant,
                     llvm::GlobalValue::ExternalLinkage,
                     nullptr,
                     varDecl->getName());
@@ -104,6 +121,48 @@ void CodeGenerator::generate(const Node *root)
 
 llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *expectedType)
 {
+    if (auto unary = dynamic_cast<const NodeUnaryOp *>(node))
+    {
+        if (unary->getOp() == Token::Kind::TOKEN_STAR)
+        {
+            llvm::Value *ptr = generateExpression(unary->getOperand(), nullptr);
+
+            if (!ptr)
+            {
+                fprintf(stderr, "Invalid pointer expression for dereference.\n");
+                return nullptr;
+            }
+
+            if (!expectedType)
+            {
+                fprintf(stderr, "Expected type must be provided for dereference with opaque pointers.\n");
+                return nullptr;
+            }
+
+            return builder.CreateLoad(expectedType, ptr, "deref");
+        }
+        else if (unary->getOp() == Token::Kind::TOKEN_AMPERSAND)
+        {
+            if (auto id = dynamic_cast<const NodeIdentifier *>(unary->getOperand()))
+            {
+                const SymbolTable::Symbol *sym = symbolTable.lookupVariable(id->getName());
+
+                if (!sym)
+                {
+                    fprintf(stderr, "Undefined variable: %s\n", id->getName().c_str());
+                    return nullptr;
+                }
+
+                return sym->value;
+            }
+            else
+            {
+                fprintf(stderr, "L'opérateur '&' ne peut s'appliquer qu'à un identifiant.\n");
+                return nullptr;
+            }
+        }
+    }
+
     if (auto number = dynamic_cast<const NodeNumber *>(node))
     {
         if (!expectedType)

@@ -87,7 +87,9 @@ Token Lexer::getNextToken()
 			}
 		}
 		return Token(Token::Kind::TOKEN_EQUAL, "=");
-
+	case '&':
+		position++;
+		return Token(Token::Kind::TOKEN_AMPERSAND, "&");
 	case '<':
 		position++;
 

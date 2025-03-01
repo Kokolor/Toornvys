@@ -46,6 +46,19 @@ private:
 	std::unique_ptr<Node> right;
 };
 
+class NodeUnaryOp : public Node
+{
+public:
+	NodeUnaryOp(Token::Kind op, std::unique_ptr<Node> operand) : op(op), operand(std::move(operand)) {}
+
+	Token::Kind getOp() const { return op; }
+	const Node *getOperand() const { return operand.get(); }
+
+private:
+	Token::Kind op;
+	std::unique_ptr<Node> operand;
+};
+
 class NodeReturn : public Node
 {
 public:
@@ -124,6 +137,8 @@ private:
 	std::unique_ptr<Node> parseExpression();
 	std::unique_ptr<Node> parseComparison();
 	std::unique_ptr<Node> parseAdditive();
+	std::unique_ptr<Node> parsePrimary();
+	std::unique_ptr<Node> parseUnary();
 	std::unique_ptr<Node> parseTerm();
 	std::unique_ptr<Node> parseFactor();
 

@@ -89,6 +89,7 @@ std::string readSourceFile(const std::string &filename)
 
     std::stringstream buffer;
     buffer << file.rdbuf();
+    
     return buffer.str();
 }
 
