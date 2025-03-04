@@ -1,6 +1,10 @@
-let a: i32 = 42;
-let p: i32* = &a;
+fn foo(ptr: i32*) => {
+    return ptr;
+} -> i32*
 
-fn deref_test() => {
-    return *p;
+fn main() => {
+    let x: i32 = 14;
+    let pointer: i32* = &x;
+    foo(pointer);
+    return 0;
 } -> i32

@@ -51,29 +51,33 @@ std::unique_ptr<Node> Parser::parseAdditive()
 	return left;
 }
 
-std::unique_ptr<Node> Parser::parsePrimary() {
-    if (matchSingleToken(Token::Kind::TOKEN_NUMBER)) {
-        advance();
-        return std::make_unique<NodeNumber>(std::stoi(previous().getValue()));
-    }
-    if (matchSingleToken(Token::Kind::TOKEN_IDENTIFIER)) {
-        advance();
-        return std::make_unique<NodeIdentifier>(previous().getValue());
-    }
-    if (matchSingleToken(Token::Kind::TOKEN_LPAREN)) {
-        advance();
-        auto expr = parseExpression();
-        if (!matchSingleToken(Token::Kind::TOKEN_RPAREN)) {
-            fprintf(stderr, "Expected ')' after expression\n");
-            exit(EXIT_FAILURE);
-        }
-        advance();
-        return expr;
-    }
-    fprintf(stderr, "Unexpected token in primary: '%s'\n", peek().getValue().c_str());
-    exit(EXIT_FAILURE);
+std::unique_ptr<Node> Parser::parsePrimary()
+{
+	if (matchSingleToken(Token::Kind::TOKEN_NUMBER))
+	{
+		advance();
+		return std::make_unique<NodeNumber>(std::stoi(previous().getValue()));
+	}
+	if (matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
+	{
+		advance();
+		return std::make_unique<NodeIdentifier>(previous().getValue());
+	}
+	if (matchSingleToken(Token::Kind::TOKEN_LPAREN))
+	{
+		advance();
+		auto expr = parseExpression();
+		if (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
+		{
+			fprintf(stderr, "Expected ')' after expression\n");
+			exit(EXIT_FAILURE);
+		}
+		advance();
+		return expr;
+	}
+	fprintf(stderr, "Unexpected token in primary: '%s'\n", peek().getValue().c_str());
+	exit(EXIT_FAILURE);
 }
-
 
 std::unique_ptr<Node> Parser::parseUnary()
 {
@@ -105,10 +109,10 @@ std::unique_ptr<Node> Parser::parseTerm()
 	return left;
 }
 
-std::unique_ptr<Node> Parser::parseFactor() {
-    return parseUnary();
+std::unique_ptr<Node> Parser::parseFactor()
+{
+	return parseUnary();
 }
-
 
 std::unique_ptr<Node> Parser::parseStatement()
 {
@@ -181,56 +185,64 @@ std::unique_ptr<Node> Parser::parseReturn()
 	return std::make_unique<NodeReturn>(std::move(expr));
 }
 
-std::unique_ptr<Node> Parser::parseVariableDeclaration() {
-    advance();
-	
-    if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER)) {
-        fprintf(stderr, "Expected variable name after 'let'\n");
-        exit(EXIT_FAILURE);
-    }
+std::unique_ptr<Node> Parser::parseVariableDeclaration()
+{
+	advance();
 
-    advance();
+	if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
+	{
+		fprintf(stderr, "Expected variable name after 'let'\n");
+		exit(EXIT_FAILURE);
+	}
 
-    std::string name = previous().getValue();
+	advance();
 
-    if (!matchSingleToken(Token::Kind::TOKEN_COLON)) {
-        fprintf(stderr, "Expected ':' after variable name\n");
-        exit(EXIT_FAILURE);
-    }
+	std::string name = previous().getValue();
 
-    advance();
+	if (!matchSingleToken(Token::Kind::TOKEN_COLON))
+	{
+		fprintf(stderr, "Expected ':' after variable name\n");
+		exit(EXIT_FAILURE);
+	}
 
-    std::string typeStr;
+	advance();
 
-    if (matchSingleToken(Token::Kind::TOKEN_INT_TYPE)) {
-        advance();
-        typeStr = previous().getValue();
-    } else {
-        fprintf(stderr, "Expected base type after ':'\n");
-        exit(EXIT_FAILURE);
-    }
+	std::string typeStr;
 
-    while (matchSingleToken(Token::Kind::TOKEN_STAR)) {
-        advance();
-        typeStr += "*";
-    }
+	if (matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
+	{
+		advance();
+		typeStr = previous().getValue();
+	}
+	else
+	{
+		fprintf(stderr, "Expected base type after ':'\n");
+		exit(EXIT_FAILURE);
+	}
 
-    if (!matchSingleToken(Token::Kind::TOKEN_EQUAL)) {
-        fprintf(stderr, "Expected '=' after type\n");
-        exit(EXIT_FAILURE);
-    }
-	
-    advance();
+	while (matchSingleToken(Token::Kind::TOKEN_STAR))
+	{
+		advance();
+		typeStr += "*";
+	}
 
-    auto initializer = parseAssignment();
+	if (!matchSingleToken(Token::Kind::TOKEN_EQUAL))
+	{
+		fprintf(stderr, "Expected '=' after type\n");
+		exit(EXIT_FAILURE);
+	}
 
-    if (matchSingleToken(Token::Kind::TOKEN_SEMI)) {
-        advance();
-    }
+	advance();
 
-    return std::make_unique<NodeVarDeclaration>(name, typeStr, std::move(initializer));
+	auto initializer = parseAssignment();
+
+	if (matchSingleToken(Token::Kind::TOKEN_SEMI))
+	{
+		advance();
+	}
+
+	return std::make_unique<NodeVarDeclaration>(name, typeStr, std::move(initializer));
 }
-
 
 std::unique_ptr<Node> Parser::parseFuncDeclaration()
 {
@@ -286,6 +298,12 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 		std::string argType = previous().getValue();
 
+		while (matchSingleToken(Token::Kind::TOKEN_STAR))
+		{
+			advance();
+			argType += "*";
+		}
+
 		args.emplace_back(argName, argType);
 
 		if (matchSingleToken(Token::Kind::TOKEN_COMMA))
@@ -314,13 +332,21 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 		if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
 		{
-			fprintf(stderr, "Expected return type after ':'\n");
+			fprintf(stderr, "Expected return type after '->'\n");
 			exit(EXIT_FAILURE);
 		}
 
 		advance();
 
-		returnType = previous().getValue();
+		std::string retType = previous().getValue();
+
+		while (matchSingleToken(Token::Kind::TOKEN_STAR))
+		{
+			advance();
+			retType += "*";
+		}
+
+		returnType = retType;
 	}
 
 	return std::make_unique<NodeFuncDeclaration>(name, args, std::move(body), returnType);
