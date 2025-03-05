@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include "../include/error.hpp"
 #include "../include/parser.hpp"
 
 std::unique_ptr<Node> Parser::parse()
@@ -56,7 +57,17 @@ std::unique_ptr<Node> Parser::parsePrimary()
 	if (matchSingleToken(Token::Kind::TOKEN_NUMBER))
 	{
 		advance();
-		return std::make_unique<NodeNumber>(std::stoi(previous().getValue()));
+
+		const std::string &numStr = previous().getValue();
+		char *end;
+		long num = strtol(numStr.c_str(), &end, 10);
+
+		if (end != numStr.c_str() + numStr.size())
+		{
+			ERROR("Invalid integer: %s", numStr.c_str());
+		}
+
+		return std::make_unique<NodeNumber>(static_cast<int>(num));
 	}
 	if (matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
@@ -67,16 +78,18 @@ std::unique_ptr<Node> Parser::parsePrimary()
 	{
 		advance();
 		auto expr = parseExpression();
+
 		if (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
 		{
-			fprintf(stderr, "Expected ')' after expression\n");
-			exit(EXIT_FAILURE);
+			ERROR("Expected ')' after expression");
 		}
+
 		advance();
+
 		return expr;
 	}
-	fprintf(stderr, "Unexpected token in primary: '%s'\n", peek().getValue().c_str());
-	exit(EXIT_FAILURE);
+
+	ERROR("Unexpected token in primary: '%s'", peek().getValue().c_str());
 }
 
 std::unique_ptr<Node> Parser::parseUnary()
@@ -143,7 +156,7 @@ std::unique_ptr<NodeBlock> Parser::parseBlock()
 {
 	if (!matchSingleToken(Token::Kind::TOKEN_LBRACE))
 	{
-		fprintf(stderr, "Expected '{' at start of block");
+		ERROR("Expected '{' at start of block");
 	}
 
 	advance();
@@ -157,7 +170,7 @@ std::unique_ptr<NodeBlock> Parser::parseBlock()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_RBRACE))
 	{
-		fprintf(stderr, "Expected '}' at end of block");
+		ERROR("Expected '}' at end of block");
 	}
 
 	advance();
@@ -191,7 +204,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
-		fprintf(stderr, "Expected variable name after 'let'\n");
+		ERROR("Expected variable name after 'let'\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -201,7 +214,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_COLON))
 	{
-		fprintf(stderr, "Expected ':' after variable name\n");
+		ERROR("Expected ':' after variable name\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -216,7 +229,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 	}
 	else
 	{
-		fprintf(stderr, "Expected base type after ':'\n");
+		ERROR("Expected base type after ':'\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -228,7 +241,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_EQUAL))
 	{
-		fprintf(stderr, "Expected '=' after type\n");
+		ERROR("Expected '=' after type\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -250,7 +263,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
-		fprintf(stderr, "Expected function name after 'fn'\n");
+		ERROR("Expected function name after 'fn'\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -260,7 +273,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_LPAREN))
 	{
-		fprintf(stderr, "Expected '(' after function name\n");
+		ERROR("Expected '(' after function name\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -272,7 +285,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 	{
 		if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 		{
-			fprintf(stderr, "Expected argument name\n");
+			ERROR("Expected argument name\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -282,7 +295,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 		if (!matchSingleToken(Token::Kind::TOKEN_COLON))
 		{
-			fprintf(stderr, "Expected ':' after argument name\n");
+			ERROR("Expected ':' after argument name\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -290,7 +303,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 		if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
 		{
-			fprintf(stderr, "Expected type after ':'\n");
+			ERROR("Expected type after ':'\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -316,38 +329,33 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	std::string returnType = "void";
 
-	if (!matchSingleToken(Token::Kind::TOKEN_FAT_ARROW))
+	if (!matchSingleToken(Token::Kind::TOKEN_ARROW))
 	{
-		fprintf(stderr, "Expected '=>' before body\n");
+		ERROR("Expected '=>' before type\n");
 		exit(EXIT_FAILURE);
 	}
 
 	advance();
 
-	auto body = parseBlock();
+	if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
+	{
+		ERROR("Expected return type after '->'\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	advance();
 
-	if (matchSingleToken(Token::Kind::TOKEN_ARROW))
+	std::string retType = previous().getValue();
+
+	while (matchSingleToken(Token::Kind::TOKEN_STAR))
 	{
 		advance();
-
-		if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
-		{
-			fprintf(stderr, "Expected return type after '->'\n");
-			exit(EXIT_FAILURE);
-		}
-
-		advance();
-
-		std::string retType = previous().getValue();
-
-		while (matchSingleToken(Token::Kind::TOKEN_STAR))
-		{
-			advance();
-			retType += "*";
-		}
-
-		returnType = retType;
+		retType += "*";
 	}
+
+	returnType = retType;
+
+	auto body = parseBlock();
 
 	return std::make_unique<NodeFuncDeclaration>(name, args, std::move(body), returnType);
 }
@@ -367,7 +375,7 @@ std::unique_ptr<Node> Parser::parseAssignment()
 		}
 		else
 		{
-			fprintf(stderr, "Invalid assignment target.");
+			ERROR("Invalid assignment target.");
 		}
 	}
 

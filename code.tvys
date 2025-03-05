@@ -1,10 +1,10 @@
-fn foo(ptr: i32*) => {
+fn foo(ptr: i32*) -> i32* {
     return ptr;
-} -> i32*
+}
 
-fn main() => {
+fn main() -> i32 {
     let x: i32 = 14;
     let pointer: i32* = &x;
     foo(pointer);
     return 0;
-} -> i32
+}

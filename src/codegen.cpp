@@ -1,3 +1,4 @@
+#include "../include/error.hpp"
 #include "../include/codegen.hpp"
 
 void SymbolTable::addVariable(const std::string &name, llvm::Value *value, llvm::Type *type)
@@ -28,7 +29,7 @@ void SymbolTable::exitScope()
     if (scopes.size() > 1)
         scopes.pop_back();
     else
-        fprintf(stderr, "Attempt to exit the global scope is not allowed");
+        ERROR("Attempt to exit the global scope is not allowed");
 }
 
 llvm::Type *CodeGenerator::getLLVMType(const std::string &typeName)
@@ -40,10 +41,10 @@ llvm::Type *CodeGenerator::getLLVMType(const std::string &typeName)
 
         if (!baseType)
         {
-            fprintf(stderr, "Unknown base type: %s\n", baseTypeName.c_str());
+            ERROR("Unknown base type: %s\n", baseTypeName.c_str());
             return nullptr;
         }
-        
+
         return llvm::PointerType::getUnqual(baseType);
     }
 
@@ -85,7 +86,7 @@ void CodeGenerator::generate(const Node *root)
 
                 if (!llvmType)
                 {
-                    fprintf(stderr, "Unknown type: %s\n", varDecl->getType().c_str());
+                    ERROR("Unknown type: %s\n", varDecl->getType().c_str());
                     continue;
                 }
 
@@ -129,13 +130,13 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
 
             if (!ptr)
             {
-                fprintf(stderr, "Invalid pointer expression for dereference.\n");
+                ERROR("Invalid pointer expression for dereference.\n");
                 return nullptr;
             }
 
             if (!expectedType)
             {
-                fprintf(stderr, "Expected type must be provided for dereference with opaque pointers.\n");
+                ERROR("Expected type must be provided for dereference with opaque pointers.\n");
                 return nullptr;
             }
 
@@ -149,7 +150,7 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
 
                 if (!sym)
                 {
-                    fprintf(stderr, "Undefined variable: %s\n", id->getName().c_str());
+                    ERROR("Undefined variable: %s\n", id->getName().c_str());
                     return nullptr;
                 }
 
@@ -157,7 +158,7 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
             }
             else
             {
-                fprintf(stderr, "L'opérateur '&' ne peut s'appliquer qu'à un identifiant.\n");
+                ERROR("L'opérateur '&' ne peut s'appliquer qu'à un identifiant.\n");
                 return nullptr;
             }
         }
@@ -167,7 +168,7 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
     {
         if (!expectedType)
         {
-            fprintf(stderr, "Expected type\n");
+            ERROR("Expected type\n");
             return nullptr;
         }
 
@@ -235,7 +236,7 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
 
         if (!symbol)
         {
-            fprintf(stderr, "Undefined variable: %s\n", identifier->getName().c_str());
+            ERROR("Undefined variable: %s\n", identifier->getName().c_str());
             return nullptr;
         }
 
@@ -258,8 +259,20 @@ void CodeGenerator::generateReturn(const NodeReturn *node, llvm::Type *expectedT
 
         if (!returnValue)
         {
-            fprintf(stderr, "Error: Invalid return expression.\n");
+            ERROR("Error: Invalid return expression");
             return;
+        }
+
+        if (returnValue->getType() != expectedType)
+        {
+            std::string expectedStr, actualStr;
+            llvm::raw_string_ostream rsoExpected(expectedStr);
+            llvm::raw_string_ostream rsoActual(actualStr);
+
+            expectedType->print(rsoExpected);
+            returnValue->getType()->print(rsoActual);
+
+            ERROR("Type mismatch: Function returns '%s' but got '%s'", rsoExpected.str().c_str(), rsoActual.str().c_str());
         }
 
         builder.CreateRet(returnValue);
@@ -272,7 +285,7 @@ void CodeGenerator::generateReturn(const NodeReturn *node, llvm::Type *expectedT
         }
         else
         {
-            fprintf(stderr, "Non-void function must return a value.\n");
+            ERROR("Non-void function must return a value");
         }
     }
 }
@@ -283,7 +296,7 @@ llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *nod
 
     if (!llvmType)
     {
-        fprintf(stderr, "Unknown type: %s\n", node->getType().c_str());
+        ERROR("Unknown type: %s\n", node->getType().c_str());
         return nullptr;
     }
 
@@ -309,7 +322,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
 
         if (!argType)
         {
-            fprintf(stderr, "Unknown argument type: %s\n", arg.second.c_str());
+            ERROR("Unknown argument type: %s\n", arg.second.c_str());
             return;
         }
 
@@ -320,7 +333,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
 
     if (!returnType)
     {
-        fprintf(stderr, "Unknown return type: %s\n", node->getReturnType().c_str());
+        ERROR("Unknown return type: %s\n", node->getReturnType().c_str());
         return;
     }
 
@@ -370,7 +383,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
         }
         else
         {
-            fprintf(stderr, "Function '%s' with return type '%s' must have a return statement.\n", node->getName().c_str(), node->getReturnType().c_str());
+            ERROR("Function '%s' with return type '%s' must have a return statement.\n", node->getName().c_str(), node->getReturnType().c_str());
 
             return;
         }
