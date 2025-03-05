@@ -75,9 +75,39 @@ std::unique_ptr<Node> Parser::parsePrimary()
 	if (matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
 		advance();
-		return std::make_unique<NodeIdentifier>(
-			previous().getValue(),
-			previous().getLine());
+		
+		std::string name = previous().getValue();
+		int currentLine = previous().getLine();
+
+		if (matchSingleToken(Token::Kind::TOKEN_LPAREN))
+		{
+			advance();
+
+			std::vector<std::unique_ptr<Node>> args;
+
+			while (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
+			{
+				args.push_back(parseExpression());
+
+				if (!matchSingleToken(Token::Kind::TOKEN_COMMA))
+					break;
+
+				advance();
+			}
+
+			if (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
+			{
+				ERROR(peek().getLine(), "Expected ')' after function arguments");
+			}
+
+			advance();
+
+			return std::make_unique<NodeFunctionCall>(name, std::move(args), currentLine);
+		}
+		else
+		{
+			return std::make_unique<NodeIdentifier>(name, currentLine);
+		}
 	}
 	if (matchSingleToken(Token::Kind::TOKEN_LPAREN))
 	{

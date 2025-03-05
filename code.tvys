@@ -1,10 +1,8 @@
-fn foo(ptr: i32*) -> i32* {
-    return ptr;
+fn add(x: i32, y: i32) -> i32 {
+    return x + y;
 }
 
 fn main() -> i32 {
-    let x: i32 = 14;
-    let pointer: i32* = &x;
-    foo(pointer);
+    add(15, 75);
     return 0;
 }

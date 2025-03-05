@@ -158,12 +158,23 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
             }
             else
             {
-                ERROR(node->getLine(), "L'opérateur '&' ne peut s'appliquer qu'à un identifiant.\n");
+                ERROR(node->getLine(), "L'opérateur '&' ne peut s'appliquer qu'à un identifiant. T UN NEUIL FRR, PROUT PROUT PROUT\n");
                 return nullptr;
             }
         }
     }
+    else if (auto id = dynamic_cast<const NodeIdentifier *>(node))
+    {
+        const SymbolTable::Symbol *sym = symbolTable.lookupVariable(id->getName());
 
+        if (!sym)
+        {
+            ERROR(id->getLine(), "Undefined variable: %s", id->getName().c_str());
+            return nullptr;
+        }
+
+        return builder.CreateLoad(sym->type, sym->value, id->getName() + ".val");
+    }
     if (auto number = dynamic_cast<const NodeNumber *>(node))
     {
         if (!expectedType)
@@ -230,22 +241,37 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
             return nullptr;
         }
     }
-    else if (auto identifier = dynamic_cast<const NodeIdentifier *>(node))
+    else if (auto call = dynamic_cast<const NodeFunctionCall *>(node))
     {
-        const SymbolTable::Symbol *symbol = symbolTable.lookupVariable(identifier->getName());
+        llvm::Function *function = module->getFunction(call->getName());
 
-        if (!symbol)
+        if (!function)
         {
-            ERROR(node->getLine(), "Undefined variable: %s\n", identifier->getName().c_str());
+            ERROR(call->getLine(), "Undefined function '%s'", call->getName().c_str());
             return nullptr;
         }
 
-        llvm::Value *value = builder.CreateLoad(symbol->type, symbol->value, identifier->getName().c_str());
+        if (function->arg_size() != call->getArgs().size())
+        {
+            ERROR(call->getLine(), "Function '%s' expects %d arguments but got %d", call->getName().c_str(), function->arg_size(), call->getArgs().size());
+        }
 
-        if (expectedType)
-            value = castValue(value, expectedType);
+        std::vector<llvm::Value *> args;
+        size_t i = 0;
 
-        return value;
+        for (auto &arg : call->getArgs())
+        {
+            llvm::Type *expectedArgType = function->getArg(i)->getType();
+            llvm::Value *argValue = generateExpression(arg.get(), expectedArgType);
+
+            if (!argValue)
+                return nullptr;
+
+            args.push_back(argValue);
+            i++;
+        }
+
+        return builder.CreateCall(function, args, "calltmp");
     }
 
     return nullptr;
@@ -371,6 +397,10 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
             {
                 generateReturn(returnStmt, returnType);
                 hasReturn = true;
+            }
+            else
+            {
+                generateExpression(stmt.get(), nullptr);
             }
         }
     }
