@@ -4,7 +4,7 @@
 
 std::unique_ptr<Node> Parser::parse()
 {
-	auto block = std::make_unique<NodeBlock>();
+	auto block = std::make_unique<NodeBlock>(peek().getLine());
 
 	while (!isAtEnd())
 	{
@@ -32,7 +32,7 @@ std::unique_ptr<Node> Parser::parseComparison()
 	{
 		Token::Kind op = previous().getKind();
 		auto right = parseAdditive();
-		left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right));
+		left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right), previous().getLine());
 	}
 
 	return left;
@@ -46,7 +46,7 @@ std::unique_ptr<Node> Parser::parseAdditive()
 	{
 		Token::Kind op = previous().getKind();
 		auto right = parseTerm();
-		left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right));
+		left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right), previous().getLine());
 	}
 
 	return left;
@@ -54,34 +54,40 @@ std::unique_ptr<Node> Parser::parseAdditive()
 
 std::unique_ptr<Node> Parser::parsePrimary()
 {
+	int line = peek().getLine();
+
 	if (matchSingleToken(Token::Kind::TOKEN_NUMBER))
 	{
 		advance();
 
 		const std::string &numStr = previous().getValue();
+		line = previous().getLine();
 		char *end;
 		long num = strtol(numStr.c_str(), &end, 10);
 
 		if (end != numStr.c_str() + numStr.size())
 		{
-			ERROR("Invalid integer: %s", numStr.c_str());
+			ERROR(line, "Invalid integer: %s", numStr.c_str());
 		}
 
-		return std::make_unique<NodeNumber>(static_cast<int>(num));
+		return std::make_unique<NodeNumber>(static_cast<int>(num), line);
 	}
 	if (matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
 		advance();
-		return std::make_unique<NodeIdentifier>(previous().getValue());
+		return std::make_unique<NodeIdentifier>(
+			previous().getValue(),
+			previous().getLine());
 	}
 	if (matchSingleToken(Token::Kind::TOKEN_LPAREN))
 	{
 		advance();
+
 		auto expr = parseExpression();
 
 		if (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
 		{
-			ERROR("Expected ')' after expression");
+			ERROR(peek().getLine(), "Expected ')' after expression");
 		}
 
 		advance();
@@ -89,7 +95,7 @@ std::unique_ptr<Node> Parser::parsePrimary()
 		return expr;
 	}
 
-	ERROR("Unexpected token in primary: '%s'", peek().getValue().c_str());
+	ERROR(peek().getLine(), "Unexpected token in primary: '%s'", peek().getValue().c_str());
 }
 
 std::unique_ptr<Node> Parser::parseUnary()
@@ -97,12 +103,12 @@ std::unique_ptr<Node> Parser::parseUnary()
 	if (matchSingleToken(Token::Kind::TOKEN_STAR))
 	{
 		advance();
-		return std::make_unique<NodeUnaryOp>(Token::Kind::TOKEN_STAR, parseUnary());
+		return std::make_unique<NodeUnaryOp>(Token::Kind::TOKEN_STAR, parseUnary(), previous().getLine());
 	}
 	else if (matchSingleToken(Token::Kind::TOKEN_AMPERSAND))
 	{
 		advance();
-		return std::make_unique<NodeUnaryOp>(Token::Kind::TOKEN_AMPERSAND, parseUnary());
+		return std::make_unique<NodeUnaryOp>(Token::Kind::TOKEN_AMPERSAND, parseUnary(), previous().getLine());
 	}
 
 	return parsePrimary();
@@ -116,7 +122,7 @@ std::unique_ptr<Node> Parser::parseTerm()
 	{
 		Token::Kind op = previous().getKind();
 		auto right = parseFactor();
-		left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right));
+		left = std::make_unique<NodeBinaryOp>(op, std::move(left), std::move(right), previous().getLine());
 	}
 
 	return left;
@@ -156,12 +162,12 @@ std::unique_ptr<NodeBlock> Parser::parseBlock()
 {
 	if (!matchSingleToken(Token::Kind::TOKEN_LBRACE))
 	{
-		ERROR("Expected '{' at start of block");
+		ERROR(peek().getLine(), "Expected '{' at start of block");
 	}
 
 	advance();
 
-	auto block = std::make_unique<NodeBlock>();
+	auto block = std::make_unique<NodeBlock>(previous().getLine());
 
 	while (!isAtEnd() && !matchSingleToken(Token::Kind::TOKEN_RBRACE))
 	{
@@ -170,7 +176,7 @@ std::unique_ptr<NodeBlock> Parser::parseBlock()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_RBRACE))
 	{
-		ERROR("Expected '}' at end of block");
+		ERROR(peek().getLine(), "Expected '}' at end of block");
 	}
 
 	advance();
@@ -185,7 +191,7 @@ std::unique_ptr<Node> Parser::parseReturn()
 	if (matchSingleToken(Token::Kind::TOKEN_SEMI))
 	{
 		advance();
-		return std::make_unique<NodeReturn>(nullptr);
+		return std::make_unique<NodeReturn>(nullptr, previous().getLine());
 	}
 
 	auto expr = parseExpression();
@@ -195,7 +201,7 @@ std::unique_ptr<Node> Parser::parseReturn()
 		advance();
 	}
 
-	return std::make_unique<NodeReturn>(std::move(expr));
+	return std::make_unique<NodeReturn>(std::move(expr), previous().getLine());
 }
 
 std::unique_ptr<Node> Parser::parseVariableDeclaration()
@@ -204,7 +210,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
-		ERROR("Expected variable name after 'let'\n");
+		ERROR(peek().getLine(), "Expected variable name after 'let'\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -214,7 +220,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_COLON))
 	{
-		ERROR("Expected ':' after variable name\n");
+		ERROR(peek().getLine(), "Expected ':' after variable name\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -229,7 +235,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 	}
 	else
 	{
-		ERROR("Expected base type after ':'\n");
+		ERROR(peek().getLine(), "Expected base type after ':'\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -241,7 +247,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_EQUAL))
 	{
-		ERROR("Expected '=' after type\n");
+		ERROR(peek().getLine(), "Expected '=' after type\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -254,7 +260,7 @@ std::unique_ptr<Node> Parser::parseVariableDeclaration()
 		advance();
 	}
 
-	return std::make_unique<NodeVarDeclaration>(name, typeStr, std::move(initializer));
+	return std::make_unique<NodeVarDeclaration>(name, typeStr, std::move(initializer), previous().getLine());
 }
 
 std::unique_ptr<Node> Parser::parseFuncDeclaration()
@@ -263,7 +269,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
-		ERROR("Expected function name after 'fn'\n");
+		ERROR(peek().getLine(), "Expected function name after 'fn'\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -273,7 +279,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_LPAREN))
 	{
-		ERROR("Expected '(' after function name\n");
+		ERROR(peek().getLine(), "Expected '(' after function name\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -285,7 +291,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 	{
 		if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 		{
-			ERROR("Expected argument name\n");
+			ERROR(peek().getLine(), "Expected argument name\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -295,7 +301,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 		if (!matchSingleToken(Token::Kind::TOKEN_COLON))
 		{
-			ERROR("Expected ':' after argument name\n");
+			ERROR(peek().getLine(), "Expected ':' after argument name\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -303,7 +309,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 		if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
 		{
-			ERROR("Expected type after ':'\n");
+			ERROR(peek().getLine(), "Expected type after ':'\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -331,7 +337,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_ARROW))
 	{
-		ERROR("Expected '=>' before type\n");
+		ERROR(peek().getLine(), "Expected '=>' before type\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -339,10 +345,10 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
 	{
-		ERROR("Expected return type after '->'\n");
+		ERROR(peek().getLine(), "Expected return type after '->'\n");
 		exit(EXIT_FAILURE);
 	}
-	
+
 	advance();
 
 	std::string retType = previous().getValue();
@@ -357,7 +363,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	auto body = parseBlock();
 
-	return std::make_unique<NodeFuncDeclaration>(name, args, std::move(body), returnType);
+	return std::make_unique<NodeFuncDeclaration>(name, args, std::move(body), returnType, previous().getLine());
 }
 
 std::unique_ptr<Node> Parser::parseAssignment()
@@ -371,11 +377,11 @@ std::unique_ptr<Node> Parser::parseAssignment()
 
 		if (auto ident = dynamic_cast<NodeIdentifier *>(expr.get()))
 		{
-			return std::make_unique<NodeAssignment>(ident->getName(), std::move(value));
+			return std::make_unique<NodeAssignment>(ident->getName(), std::move(value), ident->getLine());
 		}
 		else
 		{
-			ERROR("Invalid assignment target.");
+			ERROR(peek().getLine(), "Invalid assignment target.");
 		}
 	}
 

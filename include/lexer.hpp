@@ -44,12 +44,14 @@ public:
 		TOKEN_INVALID
 	};
 
-	Token(Kind kind, const std::string &value) : kind(kind), value(value) {}
+	Token(Kind kind, const std::string &value, int line) : kind(kind), value(value), line(line) {}
 
+	int getLine() const { return line; }
 	Kind getKind() const { return kind; }
 	const std::string &getValue() const { return value; }
 
 private:
+	int line;
 	Kind kind;
 	std::string value;
 };
@@ -62,9 +64,9 @@ public:
 	std::vector<Token> tokenize();
 
 private:
-	Token getNextToken();
-	Token getIdentifier();
-	Token getNumber();
+	Token getNextToken(int line);
+	Token getIdentifier(int line);
+	Token getNumber(int line);
 
 	bool isDigit(char character) const;
 	bool isAlpha(char character) const;
