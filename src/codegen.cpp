@@ -40,10 +40,7 @@ llvm::Type *CodeGenerator::getLLVMType(const std::string &typeName)
         llvm::Type *baseType = getLLVMType(baseTypeName);
 
         if (!baseType)
-        {
             ERROR(0, "Unknown base type: %s\n", baseTypeName.c_str());
-            return nullptr;
-        }
 
         return llvm::PointerType::getUnqual(baseType);
     }
@@ -85,10 +82,7 @@ void CodeGenerator::generate(const Node *root)
                 llvm::Type *llvmType = getLLVMType(varDecl->getType());
 
                 if (!llvmType)
-                {
                     ERROR(0, "Unknown type: %s\n", varDecl->getType().c_str());
-                    continue;
-                }
 
                 bool isConstant = (varDecl->getInitializer() != nullptr);
 
@@ -120,6 +114,25 @@ void CodeGenerator::generate(const Node *root)
     }
 }
 
+void CodeGenerator::generateRuntime()
+{
+    llvm::FunctionType *printIntType = llvm::FunctionType::get(llvm::Type::getVoidTy(context), {llvm::Type::getInt32Ty(context)}, false);
+    llvm::Function *printIntFunc = llvm::Function::Create(printIntType, llvm::Function::ExternalLinkage, "printInt", module.get());
+    llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", printIntFunc);
+    builder.SetInsertPoint(entry);
+
+    llvm::FunctionType *printfType = llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(context), llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0), true);
+    llvm::Function *printfFunc = llvm::Function::Create(printfType, llvm::Function::ExternalLinkage, "printf", module.get());
+
+    llvm::Value *formatStr = builder.CreateGlobalStringPtr("%d\n");
+
+    llvm::Argument *arg = &*printIntFunc->arg_begin();
+
+    std::vector<llvm::Value *> args = {formatStr, arg};
+    builder.CreateCall(printfFunc, args);
+    builder.CreateRetVoid();
+}
+
 llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *expectedType)
 {
     if (auto unary = dynamic_cast<const NodeUnaryOp *>(node))
@@ -129,16 +142,10 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
             llvm::Value *ptr = generateExpression(unary->getOperand(), nullptr);
 
             if (!ptr)
-            {
                 ERROR(node->getLine(), "Invalid pointer expression for dereference.\n");
-                return nullptr;
-            }
 
             if (!expectedType)
-            {
                 ERROR(node->getLine(), "Expected type must be provided for dereference with opaque pointers.\n");
-                return nullptr;
-            }
 
             return builder.CreateLoad(expectedType, ptr, "deref");
         }
@@ -149,19 +156,29 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
                 const SymbolTable::Symbol *sym = symbolTable.lookupVariable(id->getName());
 
                 if (!sym)
-                {
                     ERROR(node->getLine(), "Undefined variable: %s\n", id->getName().c_str());
-                    return nullptr;
-                }
 
                 return sym->value;
             }
             else
-            {
                 ERROR(node->getLine(), "L'opérateur '&' ne peut s'appliquer qu'à un identifiant. T UN NEUIL FRR, PROUT PROUT PROUT\n");
-                return nullptr;
-            }
         }
+    }
+    if (auto assign = dynamic_cast<const NodeAssignment *>(node))
+    {
+        const SymbolTable::Symbol *sym = symbolTable.lookupVariable(assign->getName());
+
+        if (!sym)
+            ERROR(assign->getLine(), "Undefined variable: %s", assign->getName().c_str());
+
+        llvm::Value *value = generateExpression(assign->getValue(), sym->type);
+
+        if (!value)
+            return nullptr;
+
+        builder.CreateStore(value, sym->value);
+
+        return value;
     }
     else if (auto ptrAssign = dynamic_cast<const NodePointerAssignment *>(node))
     {
@@ -184,30 +201,24 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
             }
         }
 
-    ERROR(ptrAssign->getLine(), "Invalid Pointer Assignment");
-        return nullptr;
+        ERROR(ptrAssign->getLine(), "Invalid Pointer Assignment");
     }
     else if (auto id = dynamic_cast<const NodeIdentifier *>(node))
     {
         const SymbolTable::Symbol *sym = symbolTable.lookupVariable(id->getName());
 
         if (!sym)
-        {
             ERROR(id->getLine(), "Undefined variable: %s", id->getName().c_str());
-            return nullptr;
-        }
 
         return builder.CreateLoad(sym->type, sym->value, id->getName() + ".val");
     }
     if (auto number = dynamic_cast<const NodeNumber *>(node))
     {
         if (!expectedType)
-        {
             ERROR(node->getLine(), "Expected type\n");
-            return nullptr;
-        }
 
         unsigned bitWidth = expectedType->getIntegerBitWidth();
+
         return llvm::ConstantInt::get(context, llvm::APInt(bitWidth, number->getValue(), true));
     }
     else if (auto binary = dynamic_cast<const NodeBinaryOp *>(node))
@@ -270,15 +281,10 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
         llvm::Function *function = module->getFunction(call->getName());
 
         if (!function)
-        {
             ERROR(call->getLine(), "Undefined function '%s'", call->getName().c_str());
-            return nullptr;
-        }
 
         if (function->arg_size() != call->getArgs().size())
-        {
             ERROR(call->getLine(), "Function '%s' expects %d arguments but got %d", call->getName().c_str(), function->arg_size(), call->getArgs().size());
-        }
 
         std::vector<llvm::Value *> args;
         size_t i = 0;
@@ -308,10 +314,7 @@ void CodeGenerator::generateReturn(const NodeReturn *node, llvm::Type *expectedT
         llvm::Value *returnValue = generateExpression(node->getExpression(), expectedType);
 
         if (!returnValue)
-        {
             ERROR(node->getLine(), "Invalid return expression");
-            return;
-        }
 
         if (returnValue->getType() != expectedType)
         {
@@ -330,13 +333,9 @@ void CodeGenerator::generateReturn(const NodeReturn *node, llvm::Type *expectedT
     else
     {
         if (expectedType->isVoidTy())
-        {
             builder.CreateRetVoid();
-        }
         else
-        {
             ERROR(node->getLine(), "Non-void function must return a value");
-        }
     }
 }
 
@@ -345,10 +344,7 @@ llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *nod
     llvm::Type *llvmType = getLLVMType(node->getType());
 
     if (!llvmType)
-    {
         ERROR(node->getLine(), "Unknown type: %s\n", node->getType().c_str());
-        return nullptr;
-    }
 
     llvm::AllocaInst *alloca = createEntryBlockAlloca(function, node->getName(), llvmType);
 
@@ -371,10 +367,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
         llvm::Type *argType = getLLVMType(arg.second);
 
         if (!argType)
-        {
             ERROR(node->getLine(), "Unknown argument type: %s\n", arg.second.c_str());
-            return;
-        }
 
         argTypes.push_back(argType);
     }
@@ -382,10 +375,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
     llvm::Type *returnType = getLLVMType(node->getReturnType());
 
     if (!returnType)
-    {
         ERROR(node->getLine(), "Unknown return type: %s\n", node->getReturnType().c_str());
-        return;
-    }
 
     llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, argTypes, false);
     llvm::Function *function = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node->getName(), module.get());
@@ -432,15 +422,9 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
     if (!hasReturn)
     {
         if (returnType->isVoidTy())
-        {
             builder.CreateRetVoid();
-        }
         else
-        {
             ERROR(node->getLine(), "Function '%s' with return type '%s' must have a return statement.\n", node->getName().c_str(), node->getReturnType().c_str());
-
-            return;
-        }
     }
 
     symbolTable.exitScope();

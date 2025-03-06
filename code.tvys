@@ -1,10 +1,12 @@
-fn add(test: i32*, x: i32, y: i32) -> i32 {
-    *test = 14;
+fn add(test: i32, x: i32, y: i32) -> i32 {
+    test = 17;
+    printInt(test);
     return x + y;
 }
 
 fn main() -> i32 {
     let neuil: i32 = 7;
-    add(&neuil, 15, 75);
+    add(neuil, 15, 75);
+    printInt(neuil);
     return neuil;
 }

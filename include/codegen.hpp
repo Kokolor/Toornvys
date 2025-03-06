@@ -33,6 +33,7 @@ public:
     CodeGenerator(const std::string &moduleName) : context(), module(std::make_unique<llvm::Module>(moduleName, context)), builder(context) {}
 
     void generate(const Node *root);
+    void generateRuntime();
     llvm::Module *getModule() const { return module.get(); }
 
 private:

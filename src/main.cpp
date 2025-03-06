@@ -109,19 +109,20 @@ int main(int argc, char *argv[])
     Lexer lexer(sourceCode);
     std::vector<Token> tokens = lexer.tokenize();
 
-    for (const Token &token : tokens)
-    {
-        std::cout << "Token: " << token.getValue() << " of kind "
-                  << static_cast<int>(token.getKind()) << std::endl;
-    }
+    // for (const Token &token : tokens)
+    // {
+    //     std::cout << "Token: " << token.getValue() << " of kind "
+    //               << static_cast<int>(token.getKind()) << std::endl;
+    // }
 
     Parser parser(tokens);
     std::unique_ptr<Node> ast = parser.parse();
 
-    std::cout << "\nAST Structure:\n";
-    printAST(ast.get());
+    // std::cout << "\nAST Structure:\n";
+    // printAST(ast.get());
 
     CodeGenerator codegen("main_module");
+    codegen.generateRuntime();
     codegen.generate(ast.get());
 
     llvm::PassBuilder passBuilder;
