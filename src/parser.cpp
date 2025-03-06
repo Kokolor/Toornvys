@@ -75,7 +75,7 @@ std::unique_ptr<Node> Parser::parsePrimary()
 	if (matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
 		advance();
-		
+
 		std::string name = previous().getValue();
 		int currentLine = previous().getLine();
 
@@ -398,21 +398,27 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 std::unique_ptr<Node> Parser::parseAssignment()
 {
-	auto expr = parseExpression();
+	auto expr = parseUnary();
 
 	if (matchSingleToken(Token::Kind::TOKEN_EQUAL))
 	{
 		advance();
+		
 		auto value = parseAssignment();
 
 		if (auto ident = dynamic_cast<NodeIdentifier *>(expr.get()))
 		{
 			return std::make_unique<NodeAssignment>(ident->getName(), std::move(value), ident->getLine());
 		}
-		else
+		else if (auto unary = dynamic_cast<NodeUnaryOp *>(expr.get()))
 		{
-			ERROR(peek().getLine(), "Invalid assignment target.");
+			if (unary->getOp() == Token::Kind::TOKEN_STAR)
+			{
+				return std::make_unique<NodePointerAssignment>(std::move(unary->operand), std::move(value), unary->getLine());
+			}
 		}
+
+		ERROR(expr->getLine(), "Cible d'assignation invalide");
 	}
 
 	return expr;

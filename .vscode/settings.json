@@ -86,7 +86,10 @@
         "xmemory": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "bitset": "cpp",
+        "set": "cpp",
+        "shared_mutex": "cpp"
     },
     "makefile.configureOnOpen": false
 }

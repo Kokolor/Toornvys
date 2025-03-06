@@ -1,8 +1,10 @@
-fn add(x: i32, y: i32) -> i32 {
+fn add(test: i32*, x: i32, y: i32) -> i32 {
+    *test = 14;
     return x + y;
 }
 
 fn main() -> i32 {
-    add(15, 75);
-    return 0;
+    let neuil: i32 = 7;
+    add(&neuil, 15, 75);
+    return neuil;
 }

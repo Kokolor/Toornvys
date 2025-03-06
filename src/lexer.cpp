@@ -188,7 +188,11 @@ Token Lexer::getIdentifier(int line)
 	{
 		return Token(Token::Kind::TOKEN_RETURN, identifier, line);
 	}
-	else if (identifier == "i8" || identifier == "i16" || identifier == "i32" || identifier == "i64")
+	else if (identifier == "ref")
+	{
+		return Token(Token::Kind::TOKEN_REF, identifier, line);
+	}
+	else if (identifier == "i8" || identifier == "i16" || identifier == "i32" || identifier == "i64" || identifier == "void")
 	{
 		return Token(Token::Kind::TOKEN_INT_TYPE, identifier, line);
 	}

@@ -1,9 +1,9 @@
 #include "../include/error.hpp"
 #include "../include/codegen.hpp"
 
-void SymbolTable::addVariable(const std::string &name, llvm::Value *value, llvm::Type *type)
+void SymbolTable::addVariable(const std::string &name, llvm::Value *value, llvm::Type *type, const std::string &baseType)
 {
-    scopes.back()[name] = {value, type};
+    scopes.back()[name] = {value, type, baseType};
 }
 
 const SymbolTable::Symbol *SymbolTable::lookupVariable(const std::string &name) const
@@ -100,7 +100,7 @@ void CodeGenerator::generate(const Node *root)
                     nullptr,
                     varDecl->getName());
 
-                symbolTable.addVariable(varDecl->getName(), globalVar, llvmType);
+                symbolTable.addVariable(varDecl->getName(), globalVar, llvmType, varDecl->getType());
 
                 if (varDecl->getInitializer())
                 {
@@ -162,6 +162,30 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
                 return nullptr;
             }
         }
+    }
+    else if (auto ptrAssign = dynamic_cast<const NodePointerAssignment *>(node))
+    {
+        llvm::Value *ptr = generateExpression(ptrAssign->getPointer(), nullptr);
+
+        if (auto ptrNode = dynamic_cast<const NodeIdentifier *>(ptrAssign->getPointer()))
+        {
+            const SymbolTable::Symbol *sym = symbolTable.lookupVariable(ptrNode->getName());
+            if (sym && !sym->baseType.empty() && sym->baseType.back() == '*')
+            {
+                std::string pointeeType = sym->baseType.substr(0, sym->baseType.size() - 1);
+                llvm::Type *expectedType = getLLVMType(pointeeType);
+
+                llvm::Value *value = generateExpression(ptrAssign->getValue(), expectedType);
+                if (!value)
+                    return nullptr;
+
+                builder.CreateStore(value, ptr);
+                return value;
+            }
+        }
+
+    ERROR(ptrAssign->getLine(), "Invalid Pointer Assignment");
+        return nullptr;
     }
     else if (auto id = dynamic_cast<const NodeIdentifier *>(node))
     {
@@ -328,7 +352,7 @@ llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *nod
 
     llvm::AllocaInst *alloca = createEntryBlockAlloca(function, node->getName(), llvmType);
 
-    symbolTable.addVariable(node->getName(), alloca, llvmType);
+    symbolTable.addVariable(node->getName(), alloca, llvmType, node->getType());
 
     llvm::Value *initializer = generateExpression(node->getInitializer(), llvmType);
 
@@ -380,7 +404,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
         llvm::AllocaInst *alloca = createEntryBlockAlloca(function, argName, arg.getType());
         builder.CreateStore(&arg, alloca);
 
-        symbolTable.addVariable(argName, alloca, arg.getType());
+        symbolTable.addVariable(argName, alloca, arg.getType(), node->getArgs()[idx].second);
         idx++;
     }
 

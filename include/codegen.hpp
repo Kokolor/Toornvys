@@ -15,9 +15,10 @@ public:
     {
         llvm::Value *value;
         llvm::Type *type;
+        std::string baseType;
     };
 
-    void addVariable(const std::string &name, llvm::Value *value, llvm::Type *type);
+    void addVariable(const std::string &name, llvm::Value *value, llvm::Type *type, const std::string &baseType);
     const Symbol *lookupVariable(const std::string &name) const;
     void enterScope();
     void exitScope();

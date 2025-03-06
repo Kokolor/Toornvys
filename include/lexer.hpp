@@ -37,6 +37,7 @@ public:
 		TOKEN_LET,
 		TOKEN_FN,
 		TOKEN_RETURN,
+		TOKEN_REF,
 
 		TOKEN_INT_TYPE,
 

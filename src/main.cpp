@@ -1,6 +1,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include "llvm/IR/PassManager.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/PassPlugin.h"
 #include "../include/lexer.hpp"
 #include "../include/parser.hpp"
 #include "../include/codegen.hpp"
@@ -89,7 +92,7 @@ std::string readSourceFile(const std::string &filename)
 
     std::stringstream buffer;
     buffer << file.rdbuf();
-    
+
     return buffer.str();
 }
 
@@ -120,6 +123,23 @@ int main(int argc, char *argv[])
 
     CodeGenerator codegen("main_module");
     codegen.generate(ast.get());
+
+    llvm::PassBuilder passBuilder;
+    llvm::LoopAnalysisManager LAM;
+    llvm::FunctionAnalysisManager FAM;
+    llvm::CGSCCAnalysisManager CGAM;
+    llvm::ModuleAnalysisManager MAM;
+
+    passBuilder.registerModuleAnalyses(MAM);
+    passBuilder.registerCGSCCAnalyses(CGAM);
+    passBuilder.registerFunctionAnalyses(FAM);
+    passBuilder.registerLoopAnalyses(LAM);
+    passBuilder.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    llvm::ModulePassManager modulePM = passBuilder.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
+
+    modulePM.run(*codegen.getModule(), MAM);
+
     codegen.getModule()->print(llvm::outs(), nullptr);
 
     return 0;
