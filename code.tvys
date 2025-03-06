@@ -4,9 +4,23 @@ fn add(test: i32, x: i32, y: i32) -> i32 {
     return x + y;
 }
 
+fn modify(val: i32*) -> void {
+    *val = *val + 5;
+    printInt(*val);
+    return;
+}
+
 fn main() -> i32 {
-    let neuil: i32 = 7;
-    add(neuil, 15, 75);
-    printInt(neuil);
-    return neuil;
+    let a: i32 = 7;
+    let b: i32 = 10;
+    
+    let sum: i32 = add(a, b, 20);
+    
+    printInt(a);
+    printInt(sum);
+    
+    modify(&a);
+    printInt(a);
+    
+    return a;
 }
