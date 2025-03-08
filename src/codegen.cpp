@@ -45,11 +45,6 @@ llvm::Type *CodeGenerator::getLLVMType(const std::string &typeName)
         return llvm::PointerType::getUnqual(baseType);
     }
 
-    if (typeName == "string")
-    {
-        return llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
-    }
-
     if (typeName == "i8")
     {
         return llvm::Type::getInt8Ty(context);
