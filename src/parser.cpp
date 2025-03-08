@@ -72,6 +72,12 @@ std::unique_ptr<Node> Parser::parsePrimary()
 
 		return std::make_unique<NodeNumber>(static_cast<int>(num), line);
 	}
+	if (matchSingleToken(Token::Kind::TOKEN_STRING))
+    {
+        advance();
+        std::string str = previous().getValue();
+        return std::make_unique<NodeString>(str, line);
+    }
 	if (matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
 	{
 		advance();

@@ -1,3 +1,4 @@
+#include "../include/error.hpp"
 #include "../include/lexer.hpp"
 
 std::vector<Token> Lexer::tokenize()
@@ -52,6 +53,10 @@ Token Lexer::getNextToken(int line)
 	else if (isDigit(character))
 	{
 		return getNumber(line);
+	}
+	else if (character == '"')
+	{
+		return getString(line);
 	}
 
 	switch (character)
@@ -196,7 +201,7 @@ Token Lexer::getIdentifier(int line)
 	{
 		return Token(Token::Kind::TOKEN_EXTERN, identifier, line);
 	}
-	else if (identifier == "i8" || identifier == "i16" || identifier == "i32" || identifier == "i64" || identifier == "void")
+	else if (identifier == "i8" || identifier == "i16" || identifier == "i32" || identifier == "i64" || identifier == "void" || identifier == "string")
 	{
 		return Token(Token::Kind::TOKEN_INT_TYPE, identifier, line);
 	}
@@ -225,6 +230,64 @@ Token Lexer::getNumber(int line)
 	std::string number = source.substr(startPos, position - startPos);
 
 	return Token(Token::Kind::TOKEN_NUMBER, number, line);
+}
+
+Token Lexer::getString(int line)
+{
+	position++;
+	
+	std::string str;
+
+	while (position < source.size() && source[position] != '"')
+	{
+		if (source[position] == '\\')
+		{
+			position++;
+
+			if (position >= source.size())
+			{
+				ERROR(line, "Unterminated escape sequence in string literal");
+			}
+
+			switch (source[position])
+			{
+			case 'n':
+				str += '\n';
+				break;
+			case 't':
+				str += '\t';
+				break;
+			case '\\':
+				str += '\\';
+				break;
+			case '"':
+				str += '"';
+				break;
+			default:
+				ERROR(line, "Unknown escape sequence: \\%c", source[position]);
+			}
+		}
+		else
+		{
+			str += source[position];
+		}
+
+		if (source[position] == '\n')
+		{
+			line++;
+		}
+
+		position++;
+	}
+
+	if (position >= source.size())
+	{
+		ERROR(line, "Unterminated string literal");
+	}
+
+	position++;
+
+	return Token(Token::Kind::TOKEN_STRING, str, line);
 }
 
 bool Lexer::isDigit(char character) const

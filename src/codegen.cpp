@@ -45,6 +45,11 @@ llvm::Type *CodeGenerator::getLLVMType(const std::string &typeName)
         return llvm::PointerType::getUnqual(baseType);
     }
 
+    if (typeName == "string")
+    {
+        return llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
+    }
+
     if (typeName == "i8")
     {
         return llvm::Type::getInt8Ty(context);
@@ -168,12 +173,19 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
                 ERROR(node->getLine(), "L'opérateur '&' ne peut s'appliquer qu'à un identifiant. T UN NEUIL FRR, PROUT PROUT PROUT\n");
         }
     }
+
     if (auto cast = dynamic_cast<const NodeCast *>(node))
     {
         llvm::Value *exprVal = generateExpression(cast->getExpression(), nullptr);
         llvm::Type *targetType = getLLVMType(cast->getTargetType());
 
         return castValue(exprVal, targetType);
+    }
+
+    if (auto strNode = dynamic_cast<const NodeString *>(node))
+    {
+        llvm::Value *str = builder.CreateGlobalStringPtr(strNode->getValue());
+        return str;
     }
 
     if (auto assign = dynamic_cast<const NodeAssignment *>(node))
@@ -386,7 +398,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
 void CodeGenerator::generateExternDeclaration(const NodeExternDeclaration *node)
 {
     std::vector<llvm::Type *> argTypes;
-    
+
     for (const auto &arg : node->getArgs())
     {
         llvm::Type *argType = getLLVMType(arg.second);

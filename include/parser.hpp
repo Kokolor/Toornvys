@@ -16,6 +16,7 @@
 #include "node/vardeclaration.hpp"
 #include "node/cast.hpp"
 #include "node/extern.hpp"
+#include "node/string.hpp"
 
 class Parser
 {

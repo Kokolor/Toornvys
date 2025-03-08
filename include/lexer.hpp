@@ -41,6 +41,7 @@ public:
 		TOKEN_EXTERN,
 
 		TOKEN_INT_TYPE,
+		TOKEN_STRING,
 
 		TOKEN_EOF,
 		TOKEN_INVALID
@@ -69,6 +70,7 @@ private:
 	Token getNextToken(int line);
 	Token getIdentifier(int line);
 	Token getNumber(int line);
+	Token getString(int line);
 
 	bool isDigit(char character) const;
 	bool isAlpha(char character) const;

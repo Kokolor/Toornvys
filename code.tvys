@@ -1,5 +1,6 @@
 ext add(x: i32, y: i32) -> i32;
 
 fn main() -> i32 {
+    let hello: string = "caca";
     return add(15, 15);
 }
