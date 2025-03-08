@@ -6,13 +6,11 @@
 #include <llvm/Support/raw_ostream.h>
 #include "../include/parser.hpp"
 
-class SymbolTable
-{
+class SymbolTable {
 public:
     SymbolTable() { scopes.emplace_back(); }
 
-    struct Symbol
-    {
+    struct Symbol {
         llvm::Value *value;
         llvm::Type *type;
         std::string baseType;
@@ -27,10 +25,14 @@ private:
     std::vector<std::unordered_map<std::string, Symbol>> scopes;
 };
 
-class CodeGenerator
-{
+class CodeGenerator {
 public:
-    CodeGenerator(const std::string &moduleName) : context(), module(std::make_unique<llvm::Module>(moduleName, context)), builder(context) {}
+    CodeGenerator(const std::string &moduleName) 
+        : context(), 
+          module(std::make_unique<llvm::Module>(moduleName, context)), 
+          builder(context),
+          currentFunction(nullptr),
+          hasReturn(false) {}
 
     void generate(const Node *root);
     void generateRuntime();
@@ -40,8 +42,9 @@ private:
     llvm::Type *getLLVMType(const std::string &typeName);
 
     llvm::Value *generateExpression(const Node *node, llvm::Type *expectedType = nullptr);
-    void generateReturn(const NodeReturn *node, llvm::Type *expectedType);
-    llvm::Value *generateVarDeclaration(const NodeVarDeclaration *node, llvm::Function *function);
+    void generateReturn(const NodeReturn *node);
+    llvm::Value *generateVarDeclaration(const NodeVarDeclaration *node);
+    void generateStatement(const Node *stmt);
     void generateFuncDeclaration(const NodeFuncDeclaration *node);
     llvm::Value *castValue(llvm::Value *value, llvm::Type *expectedType);
     llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *function, const std::string &varName, llvm::Type *varType);
@@ -49,6 +52,8 @@ private:
     llvm::LLVMContext context;
     std::unique_ptr<llvm::Module> module;
     llvm::IRBuilder<> builder;
+    llvm::Function *currentFunction;
+    bool hasReturn;
 
     SymbolTable symbolTable;
 };

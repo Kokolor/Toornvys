@@ -307,57 +307,6 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
     return nullptr;
 }
 
-void CodeGenerator::generateReturn(const NodeReturn *node, llvm::Type *expectedType)
-{
-    if (node->getExpression())
-    {
-        llvm::Value *returnValue = generateExpression(node->getExpression(), expectedType);
-
-        if (!returnValue)
-            ERROR(node->getLine(), "Invalid return expression");
-
-        if (returnValue->getType() != expectedType)
-        {
-            std::string expectedStr, actualStr;
-            llvm::raw_string_ostream rsoExpected(expectedStr);
-            llvm::raw_string_ostream rsoActual(actualStr);
-
-            expectedType->print(rsoExpected);
-            returnValue->getType()->print(rsoActual);
-
-            ERROR(node->getLine(), "Type mismatch: Function returns '%s' but got '%s'", rsoExpected.str().c_str(), rsoActual.str().c_str());
-        }
-
-        builder.CreateRet(returnValue);
-    }
-    else
-    {
-        if (expectedType->isVoidTy())
-            builder.CreateRetVoid();
-        else
-            ERROR(node->getLine(), "Non-void function must return a value");
-    }
-}
-
-llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *node, llvm::Function *function)
-{
-    llvm::Type *llvmType = getLLVMType(node->getType());
-
-    if (!llvmType)
-        ERROR(node->getLine(), "Unknown type: %s\n", node->getType().c_str());
-
-    llvm::AllocaInst *alloca = createEntryBlockAlloca(function, node->getName(), llvmType);
-
-    symbolTable.addVariable(node->getName(), alloca, llvmType, node->getType());
-
-    llvm::Value *initializer = generateExpression(node->getInitializer(), llvmType);
-
-    if (!initializer)
-        return nullptr;
-
-    return builder.CreateStore(initializer, alloca);
-}
-
 void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
 {
     std::vector<llvm::Type *> argTypes;
@@ -365,20 +314,19 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
     for (const auto &arg : node->getArgs())
     {
         llvm::Type *argType = getLLVMType(arg.second);
-
         if (!argType)
             ERROR(node->getLine(), "Unknown argument type: %s\n", arg.second.c_str());
-
         argTypes.push_back(argType);
     }
 
     llvm::Type *returnType = getLLVMType(node->getReturnType());
-
+    
     if (!returnType)
         ERROR(node->getLine(), "Unknown return type: %s\n", node->getReturnType().c_str());
 
     llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, argTypes, false);
     llvm::Function *function = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node->getName(), module.get());
+    currentFunction = function;
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", function);
 
     builder.SetInsertPoint(entry);
@@ -390,44 +338,106 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
     {
         std::string argName = node->getArgs()[idx].first;
         arg.setName(argName);
-
         llvm::AllocaInst *alloca = createEntryBlockAlloca(function, argName, arg.getType());
         builder.CreateStore(&arg, alloca);
-
         symbolTable.addVariable(argName, alloca, arg.getType(), node->getArgs()[idx].second);
         idx++;
     }
 
-    bool hasReturn = false;
+    hasReturn = false;
+
     if (const NodeBlock *body = dynamic_cast<const NodeBlock *>(node->getBody().get()))
     {
         for (const auto &stmt : body->getStatements())
         {
-            if (auto varDecl = dynamic_cast<const NodeVarDeclaration *>(stmt.get()))
-            {
-                generateVarDeclaration(varDecl, function);
-            }
-            else if (auto returnStmt = dynamic_cast<const NodeReturn *>(stmt.get()))
-            {
-                generateReturn(returnStmt, returnType);
-                hasReturn = true;
-            }
-            else
-            {
-                generateExpression(stmt.get(), nullptr);
-            }
+            generateStatement(stmt.get());
         }
     }
 
     if (!hasReturn)
     {
         if (returnType->isVoidTy())
+        {
             builder.CreateRetVoid();
+        }
         else
-            ERROR(node->getLine(), "Function '%s' with return type '%s' must have a return statement.\n", node->getName().c_str(), node->getReturnType().c_str());
+        {
+            ERROR(node->getLine(), "Function '%s' with return type '%s' must have a return statement.\n",
+                  node->getName().c_str(), node->getReturnType().c_str());
+        }
     }
 
     symbolTable.exitScope();
+    currentFunction = nullptr;
+}
+
+void CodeGenerator::generateStatement(const Node *stmt)
+{
+    if (auto varDecl = dynamic_cast<const NodeVarDeclaration *>(stmt))
+    {
+        generateVarDeclaration(varDecl);
+    }
+    else if (auto returnStmt = dynamic_cast<const NodeReturn *>(stmt))
+    {
+        generateReturn(returnStmt);
+    }
+    else
+    {
+        generateExpression(stmt, nullptr);
+    }
+}
+
+llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVarDeclaration *node)
+{
+    llvm::Type *llvmType = getLLVMType(node->getType());
+
+    if (!llvmType)
+        ERROR(node->getLine(), "Unknown type: %s\n", node->getType().c_str());
+
+    llvm::AllocaInst *alloca = createEntryBlockAlloca(currentFunction, node->getName(), llvmType);
+    symbolTable.addVariable(node->getName(), alloca, llvmType, node->getType());
+
+    if (node->getInitializer())
+    {
+        llvm::Value *initializer = generateExpression(node->getInitializer(), llvmType);
+        if (initializer)
+            builder.CreateStore(initializer, alloca);
+    }
+
+    return alloca;
+}
+
+void CodeGenerator::generateReturn(const NodeReturn *node)
+{
+    hasReturn = true;
+    llvm::Type *expectedType = currentFunction->getReturnType();
+
+    if (node->getExpression())
+    {
+        llvm::Value *returnValue = generateExpression(node->getExpression(), expectedType);
+        if (!returnValue)
+            ERROR(node->getLine(), "Invalid return expression");
+
+        if (returnValue->getType() != expectedType)
+        {
+            std::string expectedStr, actualStr;
+            llvm::raw_string_ostream rsoExpected(expectedStr);
+            llvm::raw_string_ostream rsoActual(actualStr);
+            expectedType->print(rsoExpected);
+            returnValue->getType()->print(rsoActual);
+            ERROR(node->getLine(), "Type mismatch: Function returns '%s' but got '%s'",
+                  rsoExpected.str().c_str(), rsoActual.str().c_str());
+        }
+
+        builder.CreateRet(returnValue);
+    }
+    else
+    {
+        if (expectedType->isVoidTy())
+            builder.CreateRetVoid();
+        else
+            ERROR(node->getLine(), "Non-void function must return a value");
+    }
 }
 
 llvm::Value *CodeGenerator::castValue(llvm::Value *value, llvm::Type *expectedType)
