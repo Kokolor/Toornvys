@@ -1,25 +1,7 @@
-fn add(test: i32, x: i32, y: i32) -> i32 {
-    test = 17;
-    printInt(test);
-    return x + y;
-}
-
-fn modify(val: i32*) -> void {
-    *val = *val + 5;
-    printInt(*val);
-    return;
-}
 
 fn main() -> i32 {
     let a: i32 = 7;
-    let b: i32 = 10;
-    
-    let sum: i32 = add(a, b, 20);
-    
-    printInt(a);
-    printInt(sum);
-    
-    modify(&a);
+    let b: i16 = (a -> i16);
     printInt(a);
     
     return a;

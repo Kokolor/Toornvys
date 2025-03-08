@@ -115,9 +115,35 @@ std::unique_ptr<Node> Parser::parsePrimary()
 
 		auto expr = parseExpression();
 
+		if (matchSingleToken(Token::Kind::TOKEN_ARROW))
+		{
+			advance();
+
+			if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
+			{
+				ERROR(peek().getLine(), "Expected type after '->'");
+				exit(EXIT_FAILURE);
+			}
+
+			advance();
+
+			std::string targetType = previous().getValue();
+
+			if (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
+			{
+				ERROR(peek().getLine(), "Expected ')' after cast");
+				exit(EXIT_FAILURE);
+			}
+
+			advance();
+
+			return std::make_unique<NodeCast>(targetType, std::move(expr), expr->getLine());
+		}
+
 		if (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
 		{
 			ERROR(peek().getLine(), "Expected ')' after expression");
+			exit(EXIT_FAILURE);
 		}
 
 		advance();
@@ -367,7 +393,7 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 
 	if (!matchSingleToken(Token::Kind::TOKEN_ARROW))
 	{
-		ERROR(peek().getLine(), "Expected '=>' before type\n");
+		ERROR(peek().getLine(), "Expected '->' before type\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -415,6 +441,7 @@ std::unique_ptr<Node> Parser::parseAssignment()
 
 		ERROR(expr->getLine(), "Sibl daciniacion 1valid");
 	}
+
 	return expr;
 }
 

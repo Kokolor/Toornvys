@@ -14,6 +14,7 @@
 #include "node/return.hpp"
 #include "node/unaryop.hpp"
 #include "node/vardeclaration.hpp"
+#include "node/cast.hpp"
 
 class Parser
 {

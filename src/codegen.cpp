@@ -164,6 +164,14 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
                 ERROR(node->getLine(), "L'opérateur '&' ne peut s'appliquer qu'à un identifiant. T UN NEUIL FRR, PROUT PROUT PROUT\n");
         }
     }
+    if (auto cast = dynamic_cast<const NodeCast *>(node))
+    {
+        llvm::Value *exprVal = generateExpression(cast->getExpression(), nullptr);
+        llvm::Type *targetType = getLLVMType(cast->getTargetType());
+        
+        return castValue(exprVal, targetType);
+    }
+
     if (auto assign = dynamic_cast<const NodeAssignment *>(node))
     {
         const SymbolTable::Symbol *sym = symbolTable.lookupVariable(assign->getName());
@@ -320,7 +328,7 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
     }
 
     llvm::Type *returnType = getLLVMType(node->getReturnType());
-    
+
     if (!returnType)
         ERROR(node->getLine(), "Unknown return type: %s\n", node->getReturnType().c_str());
 
