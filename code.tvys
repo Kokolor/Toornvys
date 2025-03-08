@@ -1,8 +1,5 @@
+ext add(x: i32, y: i32) -> i32;
 
 fn main() -> i32 {
-    let a: i32 = 7;
-    let b: i16 = (a -> i16);
-    printInt(a);
-    
-    return a;
+    return add(15, 15);
 }

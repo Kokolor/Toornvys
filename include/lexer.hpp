@@ -38,6 +38,7 @@ public:
 		TOKEN_FN,
 		TOKEN_RETURN,
 		TOKEN_REF,
+		TOKEN_EXTERN,
 
 		TOKEN_INT_TYPE,
 

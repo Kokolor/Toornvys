@@ -192,6 +192,10 @@ Token Lexer::getIdentifier(int line)
 	{
 		return Token(Token::Kind::TOKEN_REF, identifier, line);
 	}
+	else if (identifier == "ext")
+	{
+		return Token(Token::Kind::TOKEN_EXTERN, identifier, line);
+	}
 	else if (identifier == "i8" || identifier == "i16" || identifier == "i32" || identifier == "i64" || identifier == "void")
 	{
 		return Token(Token::Kind::TOKEN_INT_TYPE, identifier, line);

@@ -110,6 +110,10 @@ void CodeGenerator::generate(const Node *root)
             {
                 generateFuncDeclaration(funcDecl);
             }
+            else if (auto externDecl = dynamic_cast<const NodeExternDeclaration *>(stmt.get()))
+            {
+                generateExternDeclaration(externDecl);
+            }
         }
     }
 }
@@ -168,7 +172,7 @@ llvm::Value *CodeGenerator::generateExpression(const Node *node, llvm::Type *exp
     {
         llvm::Value *exprVal = generateExpression(cast->getExpression(), nullptr);
         llvm::Type *targetType = getLLVMType(cast->getTargetType());
-        
+
         return castValue(exprVal, targetType);
     }
 
@@ -377,6 +381,29 @@ void CodeGenerator::generateFuncDeclaration(const NodeFuncDeclaration *node)
 
     symbolTable.exitScope();
     currentFunction = nullptr;
+}
+
+void CodeGenerator::generateExternDeclaration(const NodeExternDeclaration *node)
+{
+    std::vector<llvm::Type *> argTypes;
+    
+    for (const auto &arg : node->getArgs())
+    {
+        llvm::Type *argType = getLLVMType(arg.second);
+
+        if (!argType)
+            ERROR(node->getLine(), "Unknown argument type: %s\n", arg.second.c_str());
+
+        argTypes.push_back(argType);
+    }
+
+    llvm::Type *returnType = getLLVMType(node->getReturnType());
+
+    if (!returnType)
+        ERROR(node->getLine(), "Unknown return type: %s\n", node->getReturnType().c_str());
+
+    llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, argTypes, false);
+    llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node->getName(), module.get());
 }
 
 void CodeGenerator::generateStatement(const Node *stmt)

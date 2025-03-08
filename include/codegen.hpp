@@ -46,6 +46,7 @@ private:
     llvm::Value *generateVarDeclaration(const NodeVarDeclaration *node);
     void generateStatement(const Node *stmt);
     void generateFuncDeclaration(const NodeFuncDeclaration *node);
+    void generateExternDeclaration(const NodeExternDeclaration *node);
     llvm::Value *castValue(llvm::Value *value, llvm::Type *expectedType);
     llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *function, const std::string &varName, llvm::Type *varType);
 

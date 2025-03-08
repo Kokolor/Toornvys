@@ -203,6 +203,10 @@ std::unique_ptr<Node> Parser::parseStatement()
 	{
 		return parseReturn();
 	}
+	else if (matchSingleToken(Token::Kind::TOKEN_EXTERN))
+	{
+		return parseExternDeclaration();
+	}
 
 	auto expr = parseAssignment();
 
@@ -420,6 +424,106 @@ std::unique_ptr<Node> Parser::parseFuncDeclaration()
 	auto body = parseBlock();
 
 	return std::make_unique<NodeFuncDeclaration>(name, args, std::move(body), returnType, previous().getLine());
+}
+
+std::unique_ptr<Node> Parser::parseExternDeclaration()
+{ 
+	advance();
+
+	if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
+	{
+		ERROR(peek().getLine(), "Expected function name after 'extern'");
+	}
+
+	advance();
+
+	std::string name = previous().getValue();
+
+	if (!matchSingleToken(Token::Kind::TOKEN_LPAREN))
+	{
+		ERROR(peek().getLine(), "Expected '(' after function name\n");
+		exit(EXIT_FAILURE);
+	}
+
+	std::vector<std::pair<std::string, std::string>> args;
+
+	advance();
+
+	while (!matchSingleToken(Token::Kind::TOKEN_RPAREN))
+	{
+		if (!matchSingleToken(Token::Kind::TOKEN_IDENTIFIER))
+		{
+			ERROR(peek().getLine(), "Expected argument name\n");
+			exit(EXIT_FAILURE);
+		}
+
+		advance();
+
+		std::string argName = previous().getValue();
+
+		if (!matchSingleToken(Token::Kind::TOKEN_COLON))
+		{
+			ERROR(peek().getLine(), "Expected ':' after argument name\n");
+			exit(EXIT_FAILURE);
+		}
+
+		advance();
+
+		if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
+		{
+			ERROR(peek().getLine(), "Expected type after ':'\n");
+			exit(EXIT_FAILURE);
+		}
+
+		advance();
+
+		std::string argType = previous().getValue();
+
+		while (matchSingleToken(Token::Kind::TOKEN_STAR))
+		{
+			advance();
+			argType += "*";
+		}
+
+		args.emplace_back(argName, argType);
+
+		if (matchSingleToken(Token::Kind::TOKEN_COMMA))
+		{
+			advance();
+		}
+	}
+
+	advance();
+
+	if (!matchSingleToken(Token::Kind::TOKEN_ARROW))
+	{
+		ERROR(peek().getLine(), "Expected '->' before return type");
+	}
+
+	advance();
+
+	if (!matchSingleToken(Token::Kind::TOKEN_INT_TYPE))
+	{
+		ERROR(peek().getLine(), "Expected return type after '->'");
+	}
+	advance();
+
+	std::string returnType = previous().getValue();
+
+	while (matchSingleToken(Token::Kind::TOKEN_STAR))
+	{
+		advance();
+		returnType += "*";
+	}
+
+	if (!matchSingleToken(Token::Kind::TOKEN_SEMI))
+	{
+		ERROR(peek().getLine(), "Expected ';' after extern declaration");
+	}
+
+	advance();
+
+	return std::make_unique<NodeExternDeclaration>(name, args, returnType, peek().getLine());
 }
 
 std::unique_ptr<Node> Parser::parseAssignment()

@@ -15,6 +15,7 @@
 #include "node/unaryop.hpp"
 #include "node/vardeclaration.hpp"
 #include "node/cast.hpp"
+#include "node/extern.hpp"
 
 class Parser
 {
@@ -37,6 +38,7 @@ private:
 	std::unique_ptr<Node> parseReturn();
 	std::unique_ptr<Node> parseVariableDeclaration();
 	std::unique_ptr<Node> parseFuncDeclaration();
+	std::unique_ptr<Node> parseExternDeclaration();
 	std::unique_ptr<Node> parseAssignment();
 
 	bool matchMultipleTokens(const std::vector<Token::Kind> &kinds);
