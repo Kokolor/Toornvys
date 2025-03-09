@@ -155,15 +155,27 @@ llvm::Value *CodeGenerator::handleUnaryOp(const NodeUnaryOp *node, llvm::Type *e
     }
     else if (node->getOp() == Token::Kind::TOKEN_AMPERSAND)
     {
-        if (auto id = dynamic_cast<const NodeIdentifier *>(node->getOperand()))
+        const Node *operand = node->getOperand();
+        if (auto id = dynamic_cast<const NodeIdentifier *>(operand))
         {
             const SymbolTable::Symbol *sym = symbolTable.lookupVariable(id->getName());
             if (!sym)
                 ERROR(node->getLine(), "Undefined variable: %s", id->getName().c_str());
             return sym->value;
         }
+        else if (auto arrayAccess = dynamic_cast<const NodeArrayAccess *>(operand))
+        {
+            const SymbolTable::Symbol *sym = symbolTable.lookupVariable(arrayAccess->getName());
+            if (!sym)
+                ERROR(arrayAccess->getLine(), "Undefined array: %s", arrayAccess->getName().c_str());
+
+            llvm::Value *index = generateExpression(arrayAccess->getIndex(), builder.getInt32Ty());
+            std::vector<llvm::Value *> indices = {builder.getInt32(0), index};
+            llvm::Value *elementPtr = builder.CreateGEP(sym->type, sym->value, indices, "arrayptr");
+            return elementPtr;
+        }
         else
-            ERROR(node->getLine(), "L'opérateur '&' ne peut s'appliquer qu'à un identifiant.");
+            ERROR(node->getLine(), "The '&' operator can only be applied to an identifier or an array element.");
     }
     return nullptr;
 }
