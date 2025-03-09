@@ -250,6 +250,8 @@ std::unique_ptr<Node> Parser::parseStatement()
 		return parseFunctionDeclaration();
 	if (matchSingleToken(Token::Kind::TOKEN_WHILE))
 		return parseWhileStatement();
+	if (matchSingleToken(Token::Kind::TOKEN_IF))
+		return parseIfStatement();
 	if (matchSingleToken(Token::Kind::TOKEN_RETURN))
 		return parseReturn();
 	if (matchSingleToken(Token::Kind::TOKEN_EXTERN))
@@ -336,6 +338,31 @@ std::unique_ptr<Node> Parser::parseWhileStatement()
 
 	auto body = parseBlock();
 	return std::make_unique<NodeWhile>(std::move(condition), std::move(body), previous().getLine());
+}
+
+std::unique_ptr<Node> Parser::parseIfStatement()
+{
+	consumeToken(Token::Kind::TOKEN_IF, "Expected 'if'");
+	consumeToken(Token::Kind::TOKEN_LPAREN, "Expected '(' after 'if'");
+	auto condition = parseExpression();
+	consumeToken(Token::Kind::TOKEN_RPAREN, "Expected ')' after condition");
+	auto thenBranch = parseBlock();
+
+	std::unique_ptr<Node> elseBranch = nullptr;
+	if (matchSingleToken(Token::Kind::TOKEN_ELSE))
+	{
+		consumeToken();
+		if (matchSingleToken(Token::Kind::TOKEN_IF))
+		{
+			elseBranch = parseIfStatement();
+		}
+		else
+		{
+			elseBranch = parseBlock();
+		}
+	}
+
+	return std::make_unique<NodeIf>(std::move(condition), std::move(thenBranch), std::move(elseBranch), previous().getLine());
 }
 
 std::unique_ptr<Node> Parser::parseExternDeclaration()

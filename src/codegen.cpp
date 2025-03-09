@@ -439,6 +439,8 @@ void CodeGenerator::generateStatement(const Node *stmt)
         generateVarDeclaration(varDecl);
     else if (auto whileStmt = dynamic_cast<const NodeWhile *>(stmt))
         generateWhileStatement(whileStmt);
+    else if (auto ifStmt = dynamic_cast<const NodeIf *>(stmt))
+        generateIfStatement(ifStmt);
     else if (auto returnStmt = dynamic_cast<const NodeReturn *>(stmt))
         generateReturn(returnStmt);
     else
@@ -501,6 +503,70 @@ void CodeGenerator::generateWhileStatement(const NodeWhile *node)
     symbolTable.exitScope();
     builder.CreateBr(condBlock);
     builder.SetInsertPoint(afterBlock);
+}
+
+void CodeGenerator::generateIfStatement(const NodeIf *node)
+{
+    llvm::Function *function = builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock *thenBlock = llvm::BasicBlock::Create(context, "if.then", function);
+    llvm::BasicBlock *elseBlock = nullptr;
+    if (node->getElseBranch())
+        elseBlock = llvm::BasicBlock::Create(context, "if.else");
+    llvm::BasicBlock *mergeBlock = llvm::BasicBlock::Create(context, "if.end");
+    llvm::Value *condValue = generateExpression(node->getCondition(), builder.getInt32Ty());
+    if (!condValue)
+        ERROR(node->getLine(), "Invalid if condition");
+
+    llvm::Value *condBool = builder.CreateICmpNE(
+        condValue,
+        llvm::ConstantInt::get(builder.getInt32Ty(), 0),
+        "ifcond");
+
+    if (node->getElseBranch())
+        builder.CreateCondBr(condBool, thenBlock, elseBlock);
+    else
+        builder.CreateCondBr(condBool, thenBlock, mergeBlock);
+
+    builder.SetInsertPoint(thenBlock);
+    symbolTable.enterScope();
+    if (auto bodyNode = dynamic_cast<const NodeBlock *>(node->getThenBranch()))
+    {
+        for (const auto &stmt : bodyNode->getStatements())
+        {
+            generateStatement(stmt.get());
+        }
+    }
+    else
+        generateStatement(node->getThenBranch());
+    symbolTable.exitScope();
+
+    if (!builder.GetInsertBlock()->getTerminator())
+        builder.CreateBr(mergeBlock);
+
+    if (node->getElseBranch())
+    {
+        function->insert(function->end(), elseBlock);
+        builder.SetInsertPoint(elseBlock);
+
+        symbolTable.enterScope();
+        if (auto bodyNode = dynamic_cast<const NodeBlock *>(node->getElseBranch()))
+        {
+            for (const auto &stmt : bodyNode->getStatements())
+            {
+                generateStatement(stmt.get());
+            }
+        }
+        else
+            generateStatement(node->getElseBranch());
+        symbolTable.exitScope();
+
+        if (!builder.GetInsertBlock()->getTerminator())
+            builder.CreateBr(mergeBlock);
+    }
+
+    function->insert(function->end(), mergeBlock);
+    builder.SetInsertPoint(mergeBlock);
 }
 
 void CodeGenerator::generateReturn(const NodeReturn *node)

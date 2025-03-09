@@ -7,6 +7,8 @@ const std::unordered_map<std::string, Token::Kind> Lexer::keywords = {
 	{"let", Token::Kind::TOKEN_LET},
 	{"fn", Token::Kind::TOKEN_FN},
 	{"while", Token::Kind::TOKEN_WHILE},
+	{"if", Token::Kind::TOKEN_IF},
+	{"else", Token::Kind::TOKEN_ELSE},
 	{"return", Token::Kind::TOKEN_RETURN},
 	{"ref", Token::Kind::TOKEN_REF},
 	{"ext", Token::Kind::TOKEN_EXTERN},
