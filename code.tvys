@@ -1,0 +1,8 @@
+fn main() -> i32 {
+    let arr: i32[5];
+    arr[4] = 7;
+    printInt(arr[0]);
+    printInt(arr[6]);
+
+    return 0;
+}
