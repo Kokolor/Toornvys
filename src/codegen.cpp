@@ -437,6 +437,8 @@ void CodeGenerator::generateStatement(const Node *stmt)
 {
     if (auto varDecl = dynamic_cast<const NodeVariableDeclaration *>(stmt))
         generateVarDeclaration(varDecl);
+    else if (auto whileStmt = dynamic_cast<const NodeWhile *>(stmt))
+        generateWhileStatement(whileStmt);
     else if (auto returnStmt = dynamic_cast<const NodeReturn *>(stmt))
         generateReturn(returnStmt);
     else
@@ -461,8 +463,44 @@ llvm::Value *CodeGenerator::generateVarDeclaration(const NodeVariableDeclaration
         if (initializer)
             builder.CreateStore(initializer, alloca);
     }
-    
+
     return alloca;
+}
+
+void CodeGenerator::generateWhileStatement(const NodeWhile *node)
+{
+    llvm::Function *function = builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock *condBlock = llvm::BasicBlock::Create(context, "while.cond", function);
+    llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(context, "while.body", function);
+    llvm::BasicBlock *afterBlock = llvm::BasicBlock::Create(context, "while.end", function);
+
+    builder.CreateBr(condBlock);
+
+    builder.SetInsertPoint(condBlock);
+    llvm::Value *condValue = generateExpression(node->getCondition(), builder.getInt32Ty());
+    if (!condValue)
+        ERROR(node->getLine(), "Invalid while condition");
+
+    llvm::Value *condBool = builder.CreateICmpNE(
+        condValue,
+        llvm::ConstantInt::get(builder.getInt32Ty(), 0),
+        "whilecond");
+
+    builder.CreateCondBr(condBool, bodyBlock, afterBlock);
+    builder.SetInsertPoint(bodyBlock);
+    symbolTable.enterScope();
+    if (auto bodyNode = dynamic_cast<const NodeBlock *>(node->getBody()))
+    {
+        for (const auto &stmt : bodyNode->getStatements())
+        {
+            generateStatement(stmt.get());
+        }
+    }
+    else
+        generateStatement(node->getBody());
+    symbolTable.exitScope();
+    builder.CreateBr(condBlock);
+    builder.SetInsertPoint(afterBlock);
 }
 
 void CodeGenerator::generateReturn(const NodeReturn *node)

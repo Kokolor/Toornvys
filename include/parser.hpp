@@ -17,6 +17,7 @@
 #include "node/extern.hpp"
 #include "node/cast.hpp"
 #include "node/assignment.hpp"
+#include "node/while.hpp"
 
 class Parser
 {
@@ -56,6 +57,7 @@ private:
 	std::unique_ptr<Node> parseReturn();
 	std::unique_ptr<Node> parseVariableDeclaration();
 	std::unique_ptr<Node> parseFunctionDeclaration();
+	std::unique_ptr<Node> parseWhileStatement();
 	std::unique_ptr<Node> parseExternDeclaration();
 	std::unique_ptr<Node> parseAssignment();
 

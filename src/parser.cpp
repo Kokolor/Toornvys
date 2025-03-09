@@ -248,6 +248,8 @@ std::unique_ptr<Node> Parser::parseStatement()
 		return parseVariableDeclaration();
 	if (matchSingleToken(Token::Kind::TOKEN_FN))
 		return parseFunctionDeclaration();
+	if (matchSingleToken(Token::Kind::TOKEN_WHILE))
+		return parseWhileStatement();
 	if (matchSingleToken(Token::Kind::TOKEN_RETURN))
 		return parseReturn();
 	if (matchSingleToken(Token::Kind::TOKEN_EXTERN))
@@ -321,6 +323,19 @@ std::unique_ptr<Node> Parser::parseFunctionDeclaration()
 	const std::string returnType = parseType();
 	auto body = parseBlock();
 	return std::make_unique<NodeFunctionDeclaration>(name, args, std::move(body), returnType, previous().getLine());
+}
+
+std::unique_ptr<Node> Parser::parseWhileStatement()
+{
+	consumeToken(Token::Kind::TOKEN_WHILE, "Expected 'while'");
+	consumeToken(Token::Kind::TOKEN_LPAREN, "Expected '(' after 'while'");
+
+	auto condition = parseExpression();
+
+	consumeToken(Token::Kind::TOKEN_RPAREN, "Expected ')' after condition");
+
+	auto body = parseBlock();
+	return std::make_unique<NodeWhile>(std::move(condition), std::move(body), previous().getLine());
 }
 
 std::unique_ptr<Node> Parser::parseExternDeclaration()

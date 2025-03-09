@@ -6,6 +6,7 @@
 const std::unordered_map<std::string, Token::Kind> Lexer::keywords = {
 	{"let", Token::Kind::TOKEN_LET},
 	{"fn", Token::Kind::TOKEN_FN},
+	{"while", Token::Kind::TOKEN_WHILE},
 	{"return", Token::Kind::TOKEN_RETURN},
 	{"ref", Token::Kind::TOKEN_REF},
 	{"ext", Token::Kind::TOKEN_EXTERN},
@@ -30,7 +31,9 @@ const std::unordered_map<char, Token::Kind> Lexer::singleCharTokens = {
 	{'{', Token::Kind::TOKEN_LBRACE},
 	{'}', Token::Kind::TOKEN_RBRACE},
 	{'[', Token::Kind::TOKEN_LBRACKET},
-	{']', Token::Kind::TOKEN_RBRACKET}};
+	{']', Token::Kind::TOKEN_RBRACKET},
+	{'<', Token::Kind::TOKEN_LESS},
+	{'>', Token::Kind::TOKEN_GREATER}};
 
 std::vector<Token> Lexer::tokenize()
 {
@@ -103,7 +106,7 @@ Token Lexer::identifierOrKeyword()
 	{
 		return Token(it->second, value, currentLine);
 	}
-	
+
 	return Token(Token::Kind::TOKEN_IDENTIFIER, value, currentLine);
 }
 

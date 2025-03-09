@@ -44,6 +44,7 @@ public:
 		// Keywords
 		TOKEN_LET,
 		TOKEN_FN,
+		TOKEN_WHILE,
 		TOKEN_RETURN,
 		TOKEN_REF,
 		TOKEN_EXTERN,
