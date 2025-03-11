@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     std::unique_ptr<Node> ast = parser.parse();
 
     CodeGenerator codegen("main_module");
-    codegen.generateRuntime();
+//    codegen.generateRuntime();
     codegen.generate(ast.get());
 
     llvm::InitializeAllTargetInfos();

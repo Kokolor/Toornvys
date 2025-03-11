@@ -230,10 +230,26 @@ llvm::Value *CodeGenerator::handleArrayAccess(const NodeArrayAccess *arrayAccess
     const SymbolTable::Symbol *sym = symbolTable.lookupVariable(arrayAccess->getName());
     if (!sym)
         ERROR(arrayAccess->getLine(), "Undefined variable: %s", arrayAccess->getName().c_str());
+
     llvm::Value *index = generateExpression(arrayAccess->getIndex(), builder.getInt32Ty());
-    std::vector<llvm::Value *> indices = {builder.getInt32(0), index};
-    llvm::Value *elementPtr = builder.CreateGEP(sym->type, sym->value, indices, "arrayidx");
-    return builder.CreateLoad(sym->type->getArrayElementType(), elementPtr, "arrayval");
+    std::vector<llvm::Value *> indices;
+
+    if (sym->type->isPointerTy())
+    {
+        std::string pointeeTypeStr = sym->baseType.substr(0, sym->baseType.size() - 1);
+        llvm::Type *pointeeType = getLLVMType(pointeeTypeStr);
+
+        llvm::Value *loadedPtr = builder.CreateLoad(sym->type, sym->value, "loadptr");
+        indices.push_back(index);
+        llvm::Value *elementPtr = builder.CreateGEP(pointeeType, loadedPtr, indices, "ptridx");
+        return builder.CreateLoad(pointeeType, elementPtr, "load");
+    }
+    else
+    {
+        indices = {builder.getInt32(0), index};
+        llvm::Value *elementPtr = builder.CreateGEP(sym->type, sym->value, indices, "arrayidx");
+        return builder.CreateLoad(sym->type->getArrayElementType(), elementPtr, "arrayval");
+    }
 }
 
 llvm::Value *CodeGenerator::handleArrayAssignment(const NodeArrayAssignment *arrayAssign)
@@ -241,10 +257,29 @@ llvm::Value *CodeGenerator::handleArrayAssignment(const NodeArrayAssignment *arr
     const SymbolTable::Symbol *sym = symbolTable.lookupVariable(arrayAssign->getName());
     if (!sym)
         ERROR(arrayAssign->getLine(), "Undefined variable: %s", arrayAssign->getName().c_str());
+
     llvm::Value *index = generateExpression(arrayAssign->getIndex(), builder.getInt32Ty());
-    std::vector<llvm::Value *> indices = {builder.getInt32(0), index};
-    llvm::Value *elementPtr = builder.CreateGEP(sym->type, sym->value, indices, "arrayidx");
-    llvm::Type *elementType = sym->type->getArrayElementType();
+    std::vector<llvm::Value *> indices;
+    llvm::Type *elementType = nullptr;
+    llvm::Value *elementPtr = nullptr;
+
+    if (sym->type->isPointerTy())
+    {
+        std::string pointeeTypeStr = sym->baseType.substr(0, sym->baseType.size() - 1);
+        llvm::Type *pointeeType = getLLVMType(pointeeTypeStr);
+
+        llvm::Value *loadedPtr = builder.CreateLoad(sym->type, sym->value, "loadptr");
+        indices.push_back(index);
+        elementPtr = builder.CreateGEP(pointeeType, loadedPtr, indices, "ptridx");
+        elementType = pointeeType;
+    }
+    else
+    {
+        indices = {builder.getInt32(0), index};
+        elementPtr = builder.CreateGEP(sym->type, sym->value, indices, "arrayidx");
+        elementType = sym->type->getArrayElementType();
+    }
+
     llvm::Value *value = generateExpression(arrayAssign->getValue(), elementType);
     builder.CreateStore(value, elementPtr);
     return value;

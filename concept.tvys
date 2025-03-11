@@ -1,0 +1,9 @@
+fn tmain(fb_ptr: i32*, fb_pitch: i64, fb_w: i64, fb_h: i64) -> i32 {
+    let total_pixels: i32 = (fb_w * fb_h);
+    let i: i32 = 0;
+        while (i < total_pixels) {
+        fb_ptr[i] = 8892751;
+        i = i +1;
+    }
+    return 0;
+}
